@@ -33,6 +33,6 @@ export default function Piece(
     const src = pieces[type][color];
 
     return(
-        <img src={src} alt={`${color} ${type}`} className="w-full h-full object-contain z-10" />
+        <img src={src} alt={`${color} ${type}`} draggable={false} className="w-full h-full object-contain z-10" />
     )
 }
