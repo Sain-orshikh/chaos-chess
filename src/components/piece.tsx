@@ -19,6 +19,10 @@ const pieces = {
         white: "/pieces/white-rook.svg",
         black: "/pieces/black-rook.svg"
     },
+    "diagonalrook": {
+        white: "/pieces/white-rook-diagonal.svg",
+        black: "/pieces/black-rook-diagonal.svg"
+    },
     "pawn": {
         white: "/pieces/white-pawn.svg",
         black: "/pieces/black-pawn.svg"
@@ -33,6 +37,6 @@ export default function Piece(
     const src = pieces[type][color];
 
     return(
-        <img src={src} alt={`${color} ${type}`} draggable={false} className="w-full h-full object-contain z-10" />
+        <img src={src} alt={`${color} ${type === "diagonalrook" ? "diagonal rook" : type}`} draggable={false} className="w-full h-full object-contain z-10" />
     )
 }
