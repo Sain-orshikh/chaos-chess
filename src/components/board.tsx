@@ -3,24 +3,29 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Piece from "./piece";
 import Icon from "./icon";
+import GameResultModal from "./game-result-modal";
 import type { PieceName, Color } from "./common/types";
 import { parseFen } from "./common/fen_parcer";
 import LegalMoveGenerate from "./common/legal_move";
-import { createGame, gameReducer } from "./common/game_state";
+import { createGame, gameReducer, promotionPieces } from "./common/game_state";
 
-const STARTING_FEN = "rbnqknbr/pppppppp/8/8/8/8/PPPPPPPP/RBNQKNBR w KQkq - 0 1";
+const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 export default function Board({ orientation = "white", playerName = "Anonymous" }: { orientation?: Color; playerName?: string }) {
     const [game, dispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen)));
-    const { board, turn, selectedSquare, lastMove, status } = game;
+    const { board, turn, selectedSquare, lastMove, status, pendingPromotion } = game;
     const gameOver = status.kind === "checkmate" || status.kind === "stalemate";
     const turnName = turn === "white" ? "White" : "Black";
-    const statusText = status.kind === "checkmate"
+    const statusText = pendingPromotion ? `${turnName}: choose a promotion` : status.kind === "checkmate"
         ? `Checkmate — ${status.winner === "white" ? "White" : "Black"} wins`
         : status.kind === "stalemate" ? "Stalemate — draw" : `${turnName} to move${status.kind === "check" ? " — in check" : ""}`;
     const [pointer, setPointer] = useState({ x: 0, y: 0, mouse: false });
     const [movingRook, setMovingRook] = useState<number | null>(null);
+    const [resultDismissed, setResultDismissed] = useState(false);
     const rookChoice = useRef<HTMLDivElement>(null);
+    const promotionChoice = useRef<HTMLDivElement>(null);
+    const statusLabel = useRef<HTMLParagraphElement>(null);
+    const wasPromoting = useRef(false);
     const selectedPiece = selectedSquare ? board[selectedSquare[0]][selectedSquare[1]] : null;
     const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare) : [], [board, selectedSquare]);
     const rotation = legalMoves.find(move => move.kind === "rotate");
@@ -30,6 +35,11 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
     const carriedPiece = pointer.mouse && !showRookChoice ? selectedPiece : null;
     useEffect(() => { if (showRookChoice) rookChoice.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus(); }, [showRookChoice]);
     useEffect(() => {
+        if (pendingPromotion) promotionChoice.current?.querySelector<HTMLButtonElement>("button")?.focus();
+        else if (wasPromoting.current) statusLabel.current?.focus();
+        wasPromoting.current = pendingPromotion !== null;
+    }, [pendingPromotion]);
+    useEffect(() => {
         if (!carriedPiece) return;
         function followPointer(event: PointerEvent) { setPointer({ x: event.clientX, y: event.clientY, mouse: event.pointerType === "mouse" }); }
         window.addEventListener("pointermove", followPointer);
@@ -38,20 +48,28 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
     const topColor = orientation === "white" ? "black" : "white";
     const visualRow = selectedSquare ? orientation === "black" ? 7 - selectedSquare[0] : selectedSquare[0] : 0;
     const visualCol = selectedSquare ? orientation === "black" ? 7 - selectedSquare[1] : selectedSquare[1] : 0;
-    function restart() { setMovingRook(null); dispatch({ type: "restart", board: parseFen(STARTING_FEN) }); }
+    const promotionRow = pendingPromotion ? orientation === "black" ? 7 - pendingPromotion.square[0] : pendingPromotion.square[0] : 0;
+    const promotionCol = pendingPromotion ? orientation === "black" ? 7 - pendingPromotion.square[1] : pendingPromotion.square[1] : 0;
+    function focusStatus() { requestAnimationFrame(() => statusLabel.current?.focus()); }
+    function restart() {
+        setMovingRook(null);
+        setResultDismissed(false);
+        dispatch({ type: "restart", board: parseFen(STARTING_FEN) });
+        focusStatus();
+    }
     return <div className="game-board" onKeyDown={event => {
         if (event.key === "Escape" && selectedSquare) { event.stopPropagation(); dispatch({ type: "click", square: selectedSquare }); setMovingRook(null); }
     }}>
         <div className="board-player"><span className={`player-color ${topColor}`} /><strong>Player 2</strong><span>{topColor === "black" ? "Black" : "White"} pieces</span></div>
-        <div className="board-status"><p role="status" aria-live="polite"><i className={`turn-dot ${turn}`} />{statusText}</p><span>Local 1v1</span></div>
-        <div className="board-frame"><div className="chess-grid" aria-label="Chaos Chess board">
+        <div className="board-status"><p ref={statusLabel} tabIndex={-1} role="status" aria-live="polite"><i className={`turn-dot ${turn}`} />{statusText}</p><span>Local 1v1</span></div>
+        <div className="board-frame"><div className="chess-grid" aria-label="Chaos Chess board" inert={pendingPromotion !== null}>
             {Array.from({ length: 64 }, (_, index) => {
                 const visualR = Math.floor(index / 8), visualC = index % 8;
                 const row = orientation === "black" ? 7 - visualR : visualR, col = orientation === "black" ? 7 - visualC : visualC;
                 const piece = board[row][col], square = row * 8 + col, selected = origin === square;
                 const legal = !showRookChoice && legalMoves.find(move => move.kind !== "rotate" && move.to === square);
                 const latest = lastMove?.from === square || lastMove?.to === square;
-                return <button type="button" key={square} disabled={gameOver}
+                return <button type="button" key={square} disabled={gameOver || pendingPromotion !== null}
                     aria-label={`${"abcdefgh"[col]}${8 - row}${piece ? ` ${piece.replaceAll("-", " ")}` : " empty"}${legal ? legal.kind === "p" ? " promotion destination" : " legal destination" : ""}`}
                     aria-pressed={selected} className={`board-square ${(row + col) % 2 ? "dark" : "light"}${selected ? " selected" : latest ? " latest" : ""}`}
                     onPointerDown={event => setPointer({ x: event.clientX, y: event.clientY, mouse: event.pointerType === "mouse" })}
@@ -69,9 +87,32 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
                 <button type="button" disabled={!rotation} title={!rotation ? "Switching would leave your king in check" : "Uses one turn"} onClick={() => { dispatch({ type: "rotate" }); setMovingRook(null); }}>{Piece(selectedPiece!.endsWith("-diagonalrook") ? "rook" : "diagonalrook", turn)}<span>Switch to {selectedPiece!.endsWith("-diagonalrook") ? "+" : "×"}</span></button>
             </div><small>Switching uses one turn.</small>
         </div>}
+        {pendingPromotion && <div ref={promotionChoice} className="promotion-choice" role="group" aria-labelledby="promotion-title"
+            style={{ left: `clamp(124px, ${(promotionCol + .5) * 12.5}%, calc(100% - 124px))`, top: promotionRow < 4 ? `${(promotionRow + 1) * 12.5}%` : undefined, bottom: promotionRow >= 4 ? `${(8 - promotionRow) * 12.5}%` : undefined }}
+            onKeyDown={event => {
+                if (event.key === "Escape") event.stopPropagation();
+                if (event.key !== "Tab") return;
+                const choices = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button")];
+                const index = choices.indexOf(document.activeElement as HTMLButtonElement);
+                event.preventDefault();
+                choices[(index + (event.shiftKey ? choices.length - 1 : 1)) % choices.length]?.focus();
+            }}>
+            <p id="promotion-title">Promote your pawn</p>
+            <div>{promotionPieces.map(piece => <button type="button" key={piece} aria-label={`Promote to ${piece}`} onClick={() => dispatch({ type: "promote", piece })}>
+                {Piece(piece, pendingPromotion.color)}<span>{piece[0].toUpperCase() + piece.slice(1)}</span>
+            </button>)}</div>
+        </div>}
         </div>
         <div className="board-player bottom"><span className={`player-color ${orientation}`} /><strong>{playerName}</strong><span>{orientation === "white" ? "White" : "Black"} pieces</span></div>
-        <div className="board-bottom"><p>{gameOver ? "Game over." : legalMoves.some(move => move.kind === "p") ? "Choose a highlighted promotion square." : "Select a piece, then its destination."}</p><button className="quiet-button" onClick={restart}><Icon name="replay" />{gameOver ? "New game" : "Restart"}</button></div>
+        <div className="board-bottom"><p>{pendingPromotion ? "Choose a piece to finish your turn." : gameOver ? "Game over." : "Select a piece, then its destination."}</p><div className="board-result-actions">
+            {gameOver && resultDismissed && <button className="quiet-button" onClick={() => setResultDismissed(false)}>View result</button>}
+            <button className="quiet-button" onClick={restart}><Icon name="replay" />{gameOver ? "New game" : "Restart"}</button>
+        </div></div>
+        {(status.kind === "checkmate" || status.kind === "stalemate") && !resultDismissed && <GameResultModal
+            status={status} playerColor={orientation} playerName={playerName}
+            onPlayAgain={restart}
+            onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
+        />}
         {carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{Piece(carriedPiece.split("-")[1] as PieceName, carriedPiece.split("-")[0] as Color)}</div>}
     </div>;
 }

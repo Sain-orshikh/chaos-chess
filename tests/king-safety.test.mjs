@@ -341,3 +341,66 @@ test('allied jumps preserve king safety, including jumping over your own king', 
     assert.equal(next.board[3][3], 'white-king');
     assert.equal(next.board[2][2], 'white-bishop');
 });
+
+for (const color of ['white', 'black']) {
+    const enemy = color === 'white' ? 'black' : 'white';
+    const row = color === 'white' ? 1 : 6;
+    const endRow = color === 'white' ? 0 : 7;
+    const kingRow = color === 'white' ? 7 : 0;
+    for (const capture of [false, true]) {
+        test(`${color} pawn ${capture ? 'capture' : 'move'} pauses for promotion and blocks other moves`, () => {
+            const board = position([kingRow, 7, `${color}-king`], [endRow, 7, `${enemy}-king`], [row, capture ? 0 : 1, `${color}-pawn`]);
+            if (capture) board[endRow][0] = `${enemy}-knight`;
+            let state = createGame(board, color);
+            state = gameReducer(state, { type: 'click', square: [row, capture ? 0 : 1] });
+            state = gameReducer(state, { type: 'click', square: [endRow, 0] });
+            assert.deepEqual(state.pendingPromotion, { square: [endRow, 0], color });
+            assert.equal(state.turn, color);
+            assert.equal(state.board[endRow][0], `${color}-pawn`);
+            assert.equal(state.selectedSquare, null);
+            assert.equal(gameReducer(state, { type: 'click', square: [kingRow, 7] }), state);
+            assert.equal(gameReducer(state, { type: 'rotate' }), state);
+            assert.equal(gameReducer(state, { type: 'promote', piece: 'king' }), state);
+            for (const piece of ['queen', 'rook', 'bishop', 'knight']) {
+                const promoted = gameReducer(state, { type: 'promote', piece });
+                assert.equal(promoted.board[endRow][0], `${color}-${piece}`);
+                assert.equal(promoted.pendingPromotion, null);
+                assert.equal(promoted.turn, enemy);
+                assert.deepEqual(promoted.lastMove, state.lastMove);
+                assert.equal(state.board[endRow][0], `${color}-pawn`, 'promotion must not mutate the pending board');
+            }
+            assert.equal(gameReducer(state, { type: 'restart', board }).pendingPromotion, null);
+        });
+    }
+}
+
+test('a rook moving to or rotating on the back rank does not trigger promotion', () => {
+    let state = createGame(position([7, 7, 'white-king'], [0, 7, 'black-king'], [1, 0, 'white-rook']));
+    state = gameReducer(state, { type: 'click', square: [1, 0] });
+    state = gameReducer(state, { type: 'click', square: [0, 0] });
+    assert.equal(state.pendingPromotion, null);
+    assert.equal(state.turn, 'black');
+    let black = createGame(position([7, 7, 'white-king'], [0, 7, 'black-king'], [0, 0, 'black-rook']), 'black');
+    black = gameReducer(black, { type: 'click', square: [0, 0] });
+    black = gameReducer(black, { type: 'rotate' });
+    assert.equal(black.pendingPromotion, null);
+    assert.equal(black.turn, 'white');
+});
+
+test('checkmate is evaluated after the chosen promotion piece is placed', () => {
+    let state = createGame(position([2, 1, 'white-king'], [2, 3, 'white-knight'], [1, 2, 'white-pawn'], [0, 0, 'black-king']));
+    state = gameReducer(state, { type: 'click', square: [1, 2] });
+    state = gameReducer(state, { type: 'click', square: [0, 1] });
+    assert.ok(state.pendingPromotion);
+    assert.equal(state.turn, 'white');
+    state = gameReducer(state, { type: 'promote', piece: 'queen' });
+    assert.deepEqual(state.status, { kind: 'checkmate', winner: 'white' });
+    assert.equal(state.turn, 'black');
+    assert.equal(state.pendingPromotion, null);
+    assert.equal(gameReducer(state, { type: 'click', square: [0, 0] }), state);
+});
+
+test('promotion without a pending pawn does nothing', () => {
+    const state = createGame(position([7, 7, 'white-king'], [0, 7, 'black-king']));
+    assert.equal(gameReducer(state, { type: 'promote', piece: 'queen' }), state);
+});
