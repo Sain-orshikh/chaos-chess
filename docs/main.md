@@ -26,4 +26,3 @@ Timeline:
 Build core board, movement system first
 Bot, elo
 I’d like to handcraft the ui myself. Both web and graphics. 
-
