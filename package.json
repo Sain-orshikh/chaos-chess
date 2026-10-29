@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:api": "node --watch backend/server.js",
+    "start:api": "node backend/server.js",
+    "test": "node tests/king-safety.test.mjs && node tests/api-security.test.mjs"
   },
   "type": "module",
   "dependencies": {
@@ -20,7 +23,8 @@
     "mongoose": "^9.11.4",
     "next": "16.4.3",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

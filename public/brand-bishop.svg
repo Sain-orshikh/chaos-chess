@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="60" viewBox="354 190 540 890" role="img" aria-labelledby="logo-title logo-description">
+  <title id="logo-title">Chaos Chess</title>
+  <desc id="logo-description">A red and silver bishop with a cross, circular finial, and diagonal separation.</desc>
+  <g fill="#df2634">
+    <path fill-rule="evenodd" d="M693 260a66 66 0 1 1-132 0 66 66 0 0 1 132 0ZM653 260a26 26 0 1 0-52 0 26 26 0 0 0 52 0Z"/>
+    <path fill-rule="evenodd" d="M627 302 787 475C826 524 865 574 879 621L447 818 449 797C426 786 405 770 390 749 354 699 357 630 406 566L488 461C536 402 586 350 627 302ZM610 492V555H552V590H610V664H645V590H703V555H645V492Z"/>
+  </g>
+  <path fill="#e7e6e2" fill-rule="evenodd" d="M884 648C884 708 852 754 806 792L824 984H878V1068H376V984H429L442 840ZM684 892a57 57 0 1 1-114 0 57 57 0 0 1 114 0ZM654 892a27 27 0 1 0-54 0 27 27 0 0 0 54 0Z"/>
+</svg>

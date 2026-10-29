@@ -41,3 +41,10 @@ yarn-error.log*
 next-env.d.ts
 
 *.mjs
+# Safe configuration template
+!.env.example
+
+# Keep the engine and API regression tests
+!tests/*.test.mjs
+
+/design

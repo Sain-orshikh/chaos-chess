@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { type } from "os";
 
 const userSchema = new mongoose.Schema(
     {
@@ -10,7 +9,7 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            requried: true,
+            required: true,
             minLength: 6,
         },
         profileImg: {
@@ -18,6 +17,14 @@ const userSchema = new mongoose.Schema(
             default: "",
         },
         elo: {
+            type: Number,
+            default: 0,
+        },
+        matches: {
+            type: Number,
+            default: 0,
+        },
+        wins: {
             type: Number,
             default: 0,
         }

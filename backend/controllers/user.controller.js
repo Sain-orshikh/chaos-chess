@@ -1,72 +1,48 @@
-import bcrypt from 'bcryptjs';
-import {v2 as cloudinary} from "cloudinary";
-
+import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
+import { fields, username, password, profileImage, ValidationError, validationResponse } from "../security/validation.js";
+import { uploadProfileImage } from "../utils/uploadProfileImage.js";
 
-export const getUserProfile = async (req,res) => {
-    const {username} = req.params;
-
-    try{
-        const user = await User.findOne({username}).select("-password");
-        if(!user) return res.status(400).json({error: "User not found"});
-        res.status(200).json(user);
-    }
-    catch(error){
-        console.log("Error in getUserProfile:",error.message);
-        res.status(500).json({error: error.message});
+export const getUserProfile = async (req, res) => {
+    try {
+        const name = username(req.params.username);
+        const user = await User.findOne({ username: name }).select("-password");
+        if (!user) return res.status(404).json({ error: "User not found." });
+        return res.json(user);
+    } catch (error) {
+        if (validationResponse(error, res)) return;
+        return res.status(500).json({ error: "Could not load this profile." });
     }
 };
 
 export const updateUser = async (req, res) => {
-	const { username, currentPassword, newPassword } = req.body;
-	let { profileImg } = req.body;
-
-	const userId = req.user._id;
-
-	try {
-		
-		let user = await User.findById(userId);
-		const usernameregex = await User.findOne({username});
-		
-		if(usernameregex && usernameregex.username !== user.username) return res.status(400).json({error: "Username is already taken"});
-
-		if (!user) return res.status(404).json({ message: "User not found" });
-
-		if ((!newPassword && currentPassword) || (!currentPassword && newPassword)) {
-			return res.status(400).json({ error: "Please provide both current password and new password" });
-		}
-
-		if (currentPassword && newPassword) {
-			const isMatch = await bcrypt.compare(currentPassword, user.password);
-			if (!isMatch) return res.status(400).json({ error: "Current password is incorrect" });
-			if (newPassword.length < 6) {
-				return res.status(400).json({ error: "Password must be at least 6 characters long" });
-			}
-
-			const salt = await bcrypt.genSalt(10);
-			user.password = await bcrypt.hash(newPassword, salt);
-		}
-
-		if (profileImg) {
-			if (user.profileImg) {
-				await cloudinary.uploader.destroy(user.profileImg.split("/").pop().split(".")[0]);
-			}
-
-			const uploadedResponse = await cloudinary.uploader.upload(profileImg);
-			profileImg = uploadedResponse.secure_url;
-		}
-
-		user.username = username || user.username;
-		user.profileImg = profileImg || user.profileImg;
-
-		user = await user.save();
-
-		// password should be null in response
-		user.password = null;
-
-		return res.status(200).json(user);
-	} catch (error) {
-		console.log("Error in updateUser: ", error.message);
-		res.status(500).json({ error: error.message });
-	}
+    try {
+        // Never pass request objects to Mongo queries or updates. Elo and stats are not writable here.
+        fields(req.body, ["username", "currentPassword", "newPassword", "profileImg"]);
+        const body = req.body;
+        if (!Object.keys(body).length) throw new ValidationError("Choose a profile setting to update.");
+        const name = body.username === undefined ? undefined : username(body.username);
+        const changingPassword = body.currentPassword !== undefined || body.newPassword !== undefined;
+        const current = changingPassword ? password(body.currentPassword) : undefined;
+        const next = changingPassword ? password(body.newPassword) : undefined;
+        const image = body.profileImg === undefined ? null : await profileImage(body.profileImg);
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ error: "User not found." });
+        if (name && name !== user.username && await User.exists({ username: name })) {
+            return res.status(400).json({ error: "Username is already taken." });
+        }
+        if (changingPassword) {
+            if (!await bcrypt.compare(current, user.password)) return res.status(400).json({ error: "Current password is incorrect." });
+            user.password = await bcrypt.hash(next, 12);
+        }
+        if (image) user.profileImg = await uploadProfileImage(image, user._id);
+        if (name) user.username = name;
+        await user.save();
+        return res.json({ _id: user._id, username: user.username, profileImg: user.profileImg, elo: user.elo, matches: user.matches, wins: user.wins });
+    } catch (error) {
+        if (validationResponse(error, res)) return;
+        if (error.code === 11000) return res.status(400).json({ error: "Username is already taken." });
+        console.error("Profile update failed:", error.name);
+        return res.status(500).json({ error: "Could not save your profile. Please try again." });
+    }
 };

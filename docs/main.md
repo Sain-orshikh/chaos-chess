@@ -25,4 +25,3 @@ Devour mode: pawn eat pawn to turn into bishop. Bishop eat pawn-knight. Etc. (ow
 Timeline:
 Build core board, movement system first
 Bot, elo
-I’d like to handcraft the ui myself. Both web and graphics. 

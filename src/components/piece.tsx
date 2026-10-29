@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const pieces = {
     "king": {
         white: "/pieces/white-king.svg",
@@ -37,6 +39,6 @@ export default function Piece(
     const src = pieces[type][color];
 
     return(
-        <img src={src} alt={`${color} ${type === "diagonalrook" ? "diagonal rook" : type}`} draggable={false} className="w-full h-full object-contain z-10" />
+        <Image width={256} height={256} src={src} alt={`${color} ${type === "diagonalrook" ? "diagonal rook" : type}`} draggable={false} className="piece-image" />
     )
 }

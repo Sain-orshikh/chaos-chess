@@ -7,7 +7,7 @@ export type Board = (string | null)[][];
 export type BasicMove = {
     from: number;
     to: number;
-    kind: "m" | "c" | "ch"; //c-capture, m-move, ch-checkers
+    kind: "m" | "c" | "ch" | "p"; //c-capture, m-move, ch-checkers, p-promote
 } | {
     from: number;
     to: number;

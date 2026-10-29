@@ -1,8 +1,5 @@
-import Image from "next/image";
-import Board from "@/components/board";
+import PlayLobby from "@/components/play-lobby";
 
 export default function Home() {
-  return (
-    <Board/>
-  );
+  return <PlayLobby />;
 }
