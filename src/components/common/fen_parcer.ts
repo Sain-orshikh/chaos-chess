@@ -1,26 +1,22 @@
-import { pieceNames } from "./types";
+import { makePiece, pieceNames } from "./pieces";
+import type { Board } from "./types";
 
-export function parseFen(fen: string): (string | null)[][] {
-    const position = fen.split(" ")[0];
-    const ranks = position.split("/");
+export function parseFen(fen: string): Board {
+    const ranks = fen.split(" ")[0].split("/");
+    if (ranks.length !== 8) throw new Error("FEN must contain eight ranks");
 
-    return ranks.map((rank) => {
-        const squares: (string | null)[] = [];
-
+    return ranks.map(rank => {
+        const squares: number[] = [];
         for (const char of rank) {
             if (/[1-8]/.test(char)) {
-                for (let i = 0; i < Number(char); i++) {
-                    squares.push(null);
-                }
+                squares.push(...Array<number>(Number(char)).fill(0));
             } else {
-                const color = char === char.toUpperCase()
-                    ? "white"
-                    : "black";
-
-                squares.push(`${color}-${pieceNames[char.toLowerCase()]}`);
+                const name = pieceNames[char.toLowerCase()];
+                if (!name) throw new Error(`Unknown FEN piece: ${char}`);
+                squares.push(makePiece(name, char === char.toUpperCase() ? "white" : "black"));
             }
         }
-
+        if (squares.length !== 8) throw new Error("FEN ranks must contain eight squares");
         return squares;
     });
 }

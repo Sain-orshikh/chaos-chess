@@ -1,4 +1,5 @@
 import { offsetsS, offsetsD } from "./types";
+import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections } from "./pieces";
 import type { BasicMove, Board, Color } from "./types";
 import { isKingSafe } from "./king_safety";
 import { applyMove } from "./apply_move";
@@ -10,7 +11,9 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
 
     if (!piece) return moves
 
-    const [color, pieceType] = piece.split("-")
+    const color = pieceColor(piece) as Color
+    const definition = pieceDefinition(piece)
+    if (!definition) throw new Error(`Unknown piece code: ${piece}`)
     const origin = row * 8 + col
 
 
@@ -25,9 +28,9 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
                 const to = origin + offsetsS[direction] * step
                 const target = board[Math.floor(to / 8)][to % 8]
 
-                if (target !== null){
-                    const targetColor = target.split("-")
-                    if (targetColor[0] !== color){
+                if (target !== 0){
+                    const targetColor = pieceColor(target)
+                    if (targetColor !== color){
                         moves.push({from: origin, to, kind: "c"})
                     }
 
@@ -55,9 +58,9 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
                 const to = origin + offsetsD[direction] * step
                 const target = board[Math.floor(to / 8)][to % 8]
 
-                if (target !== null){
-                    const targetColor = target.split("-")
-                    if (targetColor[0] !== color){
+                if (target !== 0){
+                    const targetColor = pieceColor(target)
+                    if (targetColor !== color){
                         moves.push({from: origin, to, kind: "c"})
                     }
 
@@ -71,17 +74,6 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
     }
 
     function genHorse() {
-        const horseSteps = [
-            [ 2,  1],
-            [-1,  2],
-            [-2, -1],
-            [ 1, -2],
-            [-2,  1],
-            [-1, -2],
-            [ 2, -1],
-            [ 1,  2],
-        ] as const;
-
         for (const [dr, dc] of horseSteps){
             const nextRow = row + dr
             const nextCol = col + dc
@@ -93,27 +85,20 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             }
             const target = board[nextRow][nextCol]
 
-            if (target !== null && target.split("-")[0] === color){
+            if (target !== 0 && pieceColor(target) === color){
                 continue
             }
 
-            moves.push({from: origin, to: nextRow * 8 + nextCol, kind: target === null ? "m" : "c"})
+            moves.push({from: origin, to: nextRow * 8 + nextCol, kind: target === 0 ? "m" : "c"})
         }
     }
 
     function genCheckers() {
-        const diagonals = [
-            [-1, -1],
-            [-1,  1],
-            [ 1, -1],
-            [ 1,  1],
-        ] as const;
-
         function onBoard(r: number, c: number) {
             return r >= 0 && r < 8 && c >= 0 && c < 8;
         }
 
-        for (const [dr, dc] of diagonals) {
+        for (const [dr, dc] of diagonalDirections) {
             const nextRow = row + dr;
             const nextCol = col + dc;
 
@@ -121,7 +106,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
 
             const target = board[nextRow][nextCol];
 
-            if (target === null) {
+            if (target === 0) {
                 moves.push({
                     from: origin,
                     to: nextRow * 8 + nextCol,
@@ -134,13 +119,13 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             const landingCol = col + dc * 2;
 
             if (!onBoard(landingRow, landingCol)) continue;
-            if (board[landingRow][landingCol] !== null) continue;
+            if (board[landingRow][landingCol] !== 0) continue;
 
             moves.push({
                 from: origin,
                 to: landingRow * 8 + landingCol,
                 // Friendly jumps are quiet moves; only enemies are removed.
-                kind: target.split("-")[0] === color ? "m" : "ch",
+                kind: pieceColor(target) === color ? "m" : "ch",
             });
         }
     }
@@ -157,7 +142,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
 
             if (nextCol < 0 || nextCol >= 8) continue;
 
-            if (board[nextRow][nextCol] === null) {
+            if (board[nextRow][nextCol] === 0) {
                 moves.push({
                     from: origin,
                     to: nextRow * 8 + nextCol,
@@ -169,7 +154,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
         // Capture directly ahead.
         const target = board[nextRow][col];
 
-        if (target !== null && target.split("-")[0] !== color) {
+        if (target !== 0 && pieceColor(target) !== color) {
             moves.push({
                 from: origin,
                 to: nextRow * 8 + col,
@@ -178,33 +163,14 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
         }
     }
 
-    switch(pieceType){
-        case "queen":
-            genStraight(7)
-            genHorse()
-            break
-        case "knight":
-            genStraight(2)
-            genDiagonal(2)
-            break
-        case "bishop":
-            genCheckers()
-            break
-        case "king":
-            genStraight(1)
-            genDiagonal(1)
-            break
-        case "pawn":
-            genPawn()
-            break
-        case "rook":
-            genStraight(7)
-            moves.push({from: origin, to: origin, kind: "rotate", piece: "diagonalrook"})
-            break
-        case "diagonalrook":
-            genDiagonal(7)
-            moves.push({from: origin, to: origin, kind: "rotate", piece: "rook"})
-            break
+    const movement = definition.movement;
+    if (movement.straight) genStraight(movement.straight);
+    if (movement.diagonal) genDiagonal(movement.diagonal);
+    if (movement.horse) genHorse();
+    if (movement.checkers) genCheckers();
+    if (movement.pawn) genPawn();
+    if (definition.rotatesTo) {
+        moves.push({ from: origin, to: origin, kind: "rotate", piece: definition.rotatesTo });
     }
 
     return moves.filter((move) => {
@@ -212,12 +178,12 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
         const toCol = move.to % 8;
         if (move.kind !== "rotate") {
             // Kings are checked/checkmated rather than captured.
-            if (board[toRow][toCol]?.split("-")[1] === "king") return false;
+            if (Math.abs(board[toRow][toCol]) === pieceIds.king) return false;
 
             if (move.kind === "ch") {
                 const capturedRow = (row + toRow) / 2;
                 const capturedCol = (col + toCol) / 2;
-                if (board[capturedRow][capturedCol]?.split("-")[1] === "king") return false;
+                if (Math.abs(board[capturedRow][capturedCol]) === pieceIds.king) return false;
             }
         }
 

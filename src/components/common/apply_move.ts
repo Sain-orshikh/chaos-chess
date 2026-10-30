@@ -1,3 +1,4 @@
+import { makePiece, pieceColor, pieceDefinition } from "./pieces";
 import type { BasicMove, Board } from "./types";
 
 /** Apply an already validated move without changing the original position. */
@@ -11,15 +12,18 @@ export function applyMove(board: Board, move: BasicMove): Board {
 
     const nextBoard = board.map((rank) => [...rank]);
     if (move.kind === "rotate") {
-        nextBoard[fromRow][fromCol] = `${piece.split("-")[0]}-${move.piece}`;
+        if (pieceDefinition(piece)?.rotatesTo !== move.piece) {
+            throw new Error("Invalid piece rotation");
+        }
+        nextBoard[fromRow][fromCol] = makePiece(move.piece, pieceColor(piece)!);
         return nextBoard;
     }
 
     if (move.kind === "ch") {
-        nextBoard[(fromRow + toRow) / 2][(fromCol + toCol) / 2] = null;
+        nextBoard[(fromRow + toRow) / 2][(fromCol + toCol) / 2] = 0;
     }
 
-    nextBoard[fromRow][fromCol] = null;
+    nextBoard[fromRow][fromCol] = 0;
     nextBoard[toRow][toCol] = piece;
     return nextBoard;
 }

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import Piece from "./piece";
+import Piece, { BoardPiece } from "./piece";
+import { pieceColor, pieceDefinition, pieceDefinitions } from "./common/pieces";
 import Icon from "./icon";
 import GameResultModal from "./game-result-modal";
-import type { PieceName, Color } from "./common/types";
+import type { Color } from "./common/types";
 import { parseFen } from "./common/fen_parcer";
 import LegalMoveGenerate from "./common/legal_move";
 import { createGame, gameReducer, promotionPieces } from "./common/game_state";
@@ -26,12 +27,13 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
     const promotionChoice = useRef<HTMLDivElement>(null);
     const statusLabel = useRef<HTMLParagraphElement>(null);
     const wasPromoting = useRef(false);
-    const selectedPiece = selectedSquare ? board[selectedSquare[0]][selectedSquare[1]] : null;
+    const selectedPiece = selectedSquare ? board[selectedSquare[0]][selectedSquare[1]] : 0;
     const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare) : [], [board, selectedSquare]);
     const rotation = legalMoves.find(move => move.kind === "rotate");
     const origin = selectedSquare ? selectedSquare[0] * 8 + selectedSquare[1] : null;
-    const isRook = selectedPiece?.endsWith("-rook") || selectedPiece?.endsWith("-diagonalrook");
-    const showRookChoice = !!selectedSquare && !!isRook && movingRook !== origin;
+    const selectedDefinition = pieceDefinition(selectedPiece);
+    const rotationDefinition = selectedDefinition?.rotatesTo ? pieceDefinitions[selectedDefinition.rotatesTo] : null;
+    const showRookChoice = !!selectedSquare && !!rotationDefinition && movingRook !== origin;
     const carriedPiece = pointer.mouse && !showRookChoice ? selectedPiece : null;
     useEffect(() => { if (showRookChoice) rookChoice.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus(); }, [showRookChoice]);
     useEffect(() => {
@@ -70,21 +72,21 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
                 const legal = !showRookChoice && legalMoves.find(move => move.kind !== "rotate" && move.to === square);
                 const latest = lastMove?.from === square || lastMove?.to === square;
                 return <button type="button" key={square} disabled={gameOver || pendingPromotion !== null}
-                    aria-label={`${"abcdefgh"[col]}${8 - row}${piece ? ` ${piece.replaceAll("-", " ")}` : " empty"}${legal ? legal.kind === "p" ? " promotion destination" : " legal destination" : ""}`}
+                    aria-label={`${"abcdefgh"[col]}${8 - row}${piece ? ` ${pieceColor(piece)} ${pieceDefinition(piece)!.label}` : " empty"}${legal ? legal.kind === "p" ? " promotion destination" : " legal destination" : ""}`}
                     aria-pressed={selected} className={`board-square ${(row + col) % 2 ? "dark" : "light"}${selected ? " selected" : latest ? " latest" : ""}`}
                     onPointerDown={event => setPointer({ x: event.clientX, y: event.clientY, mouse: event.pointerType === "mouse" })}
                     onClick={() => { if (!selectedSquare || selected) setMovingRook(null); dispatch({ type: "click", square: [row, col] }); }}>
                     {visualC === 0 && <span className="coordinate rank">{8 - row}</span>}
                     {visualR === 7 && <span className="coordinate file">{"abcdefgh"[col]}</span>}
-                    {piece && !(selected && carriedPiece) && Piece(piece.split("-")[1] as PieceName, piece.split("-")[0] as Color)}
+                    {piece !== 0 && !(selected && carriedPiece) && <BoardPiece code={piece} />}
                     {legal && <span className={`legal-marker ${legal.kind === "m" || legal.kind === "p" ? "quiet" : "capture"}`} />}
                 </button>;
             })}
         </div>
         {showRookChoice && <div ref={rookChoice} className="rook-choice" role="group" aria-label="Choose rook action" style={{ left: `clamp(110px, ${(visualCol + .5) * 12.5}%, calc(100% - 110px))`, top: visualRow < 4 ? `${(visualRow + 1) * 12.5}%` : undefined, bottom: visualRow >= 4 ? `${(8 - visualRow) * 12.5}%` : undefined }}>
             <p>Choose an action</p><div>
-                <button type="button" disabled={!legalMoves.some(move => move.kind !== "rotate")} onClick={() => { setMovingRook(origin); setPointer(p => ({ ...p, mouse: false })); }}>{Piece(selectedPiece!.endsWith("-diagonalrook") ? "diagonalrook" : "rook", turn)}<span>Move</span></button>
-                <button type="button" disabled={!rotation} title={!rotation ? "Switching would leave your king in check" : "Uses one turn"} onClick={() => { dispatch({ type: "rotate" }); setMovingRook(null); }}>{Piece(selectedPiece!.endsWith("-diagonalrook") ? "rook" : "diagonalrook", turn)}<span>Switch to {selectedPiece!.endsWith("-diagonalrook") ? "+" : "×"}</span></button>
+                <button type="button" disabled={!legalMoves.some(move => move.kind !== "rotate")} onClick={() => { setMovingRook(origin); setPointer(p => ({ ...p, mouse: false })); }}><BoardPiece code={selectedPiece} /><span>Move</span></button>
+                <button type="button" disabled={!rotation} title={!rotation ? "Switching would leave your king in check" : "Uses one turn"} onClick={() => { dispatch({ type: "rotate" }); setMovingRook(null); }}>{Piece(selectedDefinition!.rotatesTo!, turn)}<span>Switch to {rotationDefinition!.label}</span></button>
             </div><small>Switching uses one turn.</small>
         </div>}
         {pendingPromotion && <div ref={promotionChoice} className="promotion-choice" role="group" aria-labelledby="promotion-title"
@@ -113,6 +115,6 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
             onPlayAgain={restart}
             onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
         />}
-        {carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{Piece(carriedPiece.split("-")[1] as PieceName, carriedPiece.split("-")[0] as Color)}</div>}
+        {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
     </div>;
 }

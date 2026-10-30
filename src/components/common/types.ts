@@ -1,8 +1,9 @@
 export type PieceName = "king" | "queen" | "rook" | "diagonalrook" | "bishop" | "knight" | "pawn";
+export type PieceValue = number
 
 export type Color = "white" | "black";
 
-export type Board = (string | null)[][];
+export type Board = number[][];
 
 export type BasicMove = {
     from: number;
@@ -12,17 +13,18 @@ export type BasicMove = {
     from: number;
     to: number;
     kind: "rotate";
-    piece: "rook" | "diagonalrook";
+    piece: PieceName;
 };
 
-export const pieceNames: Record<string, PieceName> = {
-    k: "king",
-    q: "queen",
-    r: "rook",
-    b: "bishop",
-    n: "knight",
-    p: "pawn",
-};
+export { pieceIds, pieceNames } from "./pieces";
+
+export const pieceValues: Record<string, PieceValue> = {
+    q: 800,
+    r: 500,
+    k: 400,
+    b: 200,
+    p: 100,
+}
 
 export const offsetsS = [-8, 8, -1, 1]
 export const offsetsD = [-9, -7, 7, 9]
