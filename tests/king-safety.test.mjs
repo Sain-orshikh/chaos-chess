@@ -23,7 +23,7 @@ function load(name) {
 const { makePiece, pieceDefinitions, pieceIds, pieceColor, pieceName } = load('pieces');
 const { parseFen } = load('fen_parcer');
 const { applyMove } = load('apply_move');
-const { isKingSafe } = load('king_safety');
+const { findKing, isKingSafe } = load('king_safety');
 const generate = load('legal_move').default;
 const { createGame, gameReducer, getGameStatus } = load('game_state');
 
@@ -32,6 +32,39 @@ function position(...pieces) {
     for (const [row, col, piece] of pieces) board[row][col] = piece;
     return board;
 }
+
+test('known king squares avoid scans and must match the resulting board', () => {
+    const board = position([7, 4, makePiece('king', 'white')], [0, 4, makePiece('king', 'black')]);
+    assert.equal(findKing(board, pieceIds.king), 60);
+    assert.equal(findKing(board, -pieceIds.king), 4);
+    assert.equal(findKing(position(), pieceIds.king), -1);
+    for (const rank of board) {
+        rank.indexOf = () => { throw new Error('Unexpected king search'); };
+    }
+    assert.equal(isKingSafe(board, 'white', 60), true);
+    assert.equal(isKingSafe(board, 'black', 4), true);
+    assert.equal(isKingSafe(board, 'white', -1), false);
+    assert.equal(isKingSafe(board, 'white', 4), false);
+    const moved = applyMove(board, { from: 60, to: 59, kind: 'm' });
+    assert.equal(isKingSafe(moved, 'white', 60), false);
+    assert.equal(isKingSafe(moved, 'white', 59), true);
+});
+
+test('move generation locates each king once, regardless of candidate count', () => {
+    for (const color of ['white', 'black']) {
+        const board = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 3, makePiece('rook', color)]);
+        let searches = 0;
+        for (const rank of board) {
+            rank.indexOf = function (...args) {
+                searches++;
+                return Array.prototype.indexOf.apply(this, args);
+            };
+        }
+        assert.ok(generate(board, [4, 3]).length > 10);
+        // White is found in the eighth rank scanned, Black in the first.
+        assert.equal(searches, 9);
+    }
+});
 
 for (const color of ['white', 'black']) {
     const enemy = color === 'white' ? 'black' : 'white';

@@ -5,20 +5,20 @@ function onBoard(row: number, col: number) {
     return row >= 0 && row < 8 && col >= 0 && col < 8;
 }
 
-/** Uses the same movement definitions as move generation, without recursive legality checks. */
-export function isKingSafe(board: Board, color: Color): boolean {
-    let kingRow = -1;
-    let kingCol = -1;
-    const king = makePiece("king", color);
-    for (let row = 0; row < 8; row++) {
-        const col = board[row].indexOf(king);
-        if (col !== -1) {
-            kingRow = row;
-            kingCol = col;
-            break;
-        }
+export function findKing(board: Board, id: number): number {
+    for (let row = 0; row < board.length; row++) {
+        const col = board[row].indexOf(id);
+        if (col !== -1) return row * 8 + col;
     }
-    if (kingRow === -1) return false;
+    return -1;
+}
+
+/** Pass the king's square in this board to avoid searching again for each candidate. */
+export function isKingSafe(board: Board, color: Color, kingPos = findKing(board, makePiece("king", color))): boolean {
+    if (!Number.isInteger(kingPos) || kingPos < 0 || kingPos >= 64) return false;
+    const kingRow = Math.floor(kingPos / 8);
+    const kingCol = kingPos % 8;
+    if (board[kingRow][kingCol] !== makePiece("king", color)) return false;
     const enemy = color === "white" ? "black" : "white";
     function enemyMovement(row: number, col: number) {
         if (!onBoard(row, col)) return undefined;

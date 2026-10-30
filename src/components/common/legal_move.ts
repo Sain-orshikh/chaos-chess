@@ -1,7 +1,7 @@
 import { offsetsS, offsetsD } from "./types";
 import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections } from "./pieces";
 import type { BasicMove, Board, Color } from "./types";
-import { isKingSafe } from "./king_safety";
+import { findKing, isKingSafe } from "./king_safety";
 import { applyMove } from "./apply_move";
 
 export default function LegalMoveGenerate(board: Board, from: [number, number]) {
@@ -12,6 +12,10 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
     if (!piece) return moves
 
     const color = pieceColor(piece) as Color
+    const kingId = pieceIds.king * (color === "white" ? 1 : -1)
+    const kingPos = findKing(board, kingId)
+    if (kingPos === -1) return moves
+    const enemyKingPos = findKing(board, -kingId)
     const definition = pieceDefinition(piece)
     if (!definition) throw new Error(`Unknown piece code: ${piece}`)
     const origin = row * 8 + col
@@ -178,16 +182,17 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
         const toCol = move.to % 8;
         if (move.kind !== "rotate") {
             // Kings are checked/checkmated rather than captured.
-            if (Math.abs(board[toRow][toCol]) === pieceIds.king) return false;
+            if (move.to === enemyKingPos) return false;
 
             if (move.kind === "ch") {
                 const capturedRow = (row + toRow) / 2;
                 const capturedCol = (col + toCol) / 2;
-                if (Math.abs(board[capturedRow][capturedCol]) === pieceIds.king) return false;
+                if ((capturedRow*8+capturedCol) === enemyKingPos) return false;
             }
         }
 
-        return isKingSafe(applyMove(board, move), color as Color);
+        const nextKingPos = piece === kingId ? move.to : kingPos;
+        return isKingSafe(applyMove(board, move), color, nextKingPos);
     })
 
 }
