@@ -2,11 +2,11 @@ import { offsetsS, offsetsD } from "./types";
 import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections } from "./pieces";
 import type { BasicMove, Board, Color } from "./types";
 import { findKing, isKingSafe } from "./king_safety";
-import { applyMove } from "./apply_move";
+import { makeMove } from "./apply_move";
 
 export default function LegalMoveGenerate(board: Board, from: [number, number]) {
     const [row, col] = from
-    const piece = board[row][col]
+    const piece = board[row * 8 + col]
     const moves: BasicMove[] = []
 
     if (!piece) return moves
@@ -30,7 +30,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             const limit = Math.min(range, to_wall[direction])
             for (let step=1; step <= limit; step++){
                 const to = origin + offsetsS[direction] * step
-                const target = board[Math.floor(to / 8)][to % 8]
+                const target = board[to]
 
                 if (target !== 0){
                     const targetColor = pieceColor(target)
@@ -60,7 +60,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             const limit = Math.min(range, diagonalWalls[direction])
             for (let step=1; step <= limit; step++){
                 const to = origin + offsetsD[direction] * step
-                const target = board[Math.floor(to / 8)][to % 8]
+                const target = board[to]
 
                 if (target !== 0){
                     const targetColor = pieceColor(target)
@@ -87,7 +87,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             ) {
                 continue
             }
-            const target = board[nextRow][nextCol]
+            const target = board[nextRow * 8 + nextCol]
 
             if (target !== 0 && pieceColor(target) === color){
                 continue
@@ -108,7 +108,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
 
             if (!onBoard(nextRow, nextCol)) continue;
 
-            const target = board[nextRow][nextCol];
+            const target = board[nextRow * 8 + nextCol];
 
             if (target === 0) {
                 moves.push({
@@ -123,7 +123,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             const landingCol = col + dc * 2;
 
             if (!onBoard(landingRow, landingCol)) continue;
-            if (board[landingRow][landingCol] !== 0) continue;
+            if (board[landingRow * 8 + landingCol] !== 0) continue;
 
             moves.push({
                 from: origin,
@@ -146,7 +146,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
 
             if (nextCol < 0 || nextCol >= 8) continue;
 
-            if (board[nextRow][nextCol] === 0) {
+            if (board[nextRow * 8 + nextCol] === 0) {
                 moves.push({
                     from: origin,
                     to: nextRow * 8 + nextCol,
@@ -156,7 +156,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
         }
 
         // Capture directly ahead.
-        const target = board[nextRow][col];
+        const target = board[nextRow * 8 + col];
 
         if (target !== 0 && pieceColor(target) !== color) {
             moves.push({
@@ -191,8 +191,26 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             }
         }
 
+        const movingPiece = board[move.from];
+        const capturedPiece = board[move.to];
+        const checkeredPiece = move.kind === "ch" ? board[(move.from + move.to) / 2] : 0
+
+        function unmakeMove(board: Board, move: BasicMove){
+            board[move.from] = movingPiece
+            board[move.to] = capturedPiece
+            if (move.kind === "ch"){
+                board[(move.from + move.to) / 2] = checkeredPiece
+            }
+        }
+
         const nextKingPos = piece === kingId ? move.to : kingPos;
-        return isKingSafe(applyMove(board, move), color, nextKingPos);
+        // Each candidate currently creates a full board copy before its safety check.
+        makeMove(board, move);
+        try {
+            return isKingSafe(board, color, nextKingPos);
+        } finally {
+            unmakeMove(board, move);
+        }
     })
 
 }

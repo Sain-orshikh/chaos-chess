@@ -28,8 +28,8 @@ const generate = load('legal_move').default;
 const { createGame, gameReducer, getGameStatus } = load('game_state');
 
 function position(...pieces) {
-    const board = Array.from({ length: 8 }, () => Array(8).fill(0));
-    for (const [row, col, piece] of pieces) board[row][col] = piece;
+    const board = Array(64).fill(0);
+    for (const [row, col, piece] of pieces) board[row * 8 + col] = piece;
     return board;
 }
 
@@ -38,9 +38,7 @@ test('known king squares avoid scans and must match the resulting board', () => 
     assert.equal(findKing(board, pieceIds.king), 60);
     assert.equal(findKing(board, -pieceIds.king), 4);
     assert.equal(findKing(position(), pieceIds.king), -1);
-    for (const rank of board) {
-        rank.indexOf = () => { throw new Error('Unexpected king search'); };
-    }
+    board.indexOf = () => { throw new Error('Unexpected king search'); };
     assert.equal(isKingSafe(board, 'white', 60), true);
     assert.equal(isKingSafe(board, 'black', 4), true);
     assert.equal(isKingSafe(board, 'white', -1), false);
@@ -54,15 +52,13 @@ test('move generation locates each king once, regardless of candidate count', ()
     for (const color of ['white', 'black']) {
         const board = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 3, makePiece('rook', color)]);
         let searches = 0;
-        for (const rank of board) {
-            rank.indexOf = function (...args) {
-                searches++;
-                return Array.prototype.indexOf.apply(this, args);
-            };
-        }
+        board.indexOf = function (...args) {
+            searches++;
+            return Array.prototype.indexOf.apply(this, args);
+        };
         assert.ok(generate(board, [4, 3]).length > 10);
-        // White is found in the eighth rank scanned, Black in the first.
-        assert.equal(searches, 9);
+        // One lookup for each king, with no further lookups for candidate moves.
+        assert.equal(searches, 2);
     }
 });
 
@@ -110,7 +106,7 @@ test('checkers attacks require an on-board empty landing square in every directi
     for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
         const board = position([4, 4, makePiece('king', 'white')], [4 + dr, 4 + dc, makePiece('bishop', 'black')]);
         assert.equal(isKingSafe(board, 'white'), false);
-        board[4 - dr][4 - dc] = makePiece('pawn', 'white');
+        board[(4 - dr) * 8 + (4 - dc)] = makePiece('pawn', 'white');
         assert.equal(isKingSafe(board, 'white'), true);
     }
     assert.equal(isKingSafe(position([0, 0, makePiece('king', 'white')], [1, 1, makePiece('bishop', 'black')]), 'white'), true);
@@ -159,14 +155,14 @@ test('pinned enemies still attack and kings cannot become adjacent or be capture
 test('checkers capture removes the jumped piece before checking for exposed attacks', () => {
     const board = position([4, 7, makePiece('king', 'white')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('pawn', 'black')], [4, 0, makePiece('rook', 'black')]);
     assert.ok(!generate(board, [5, 2]).some((m) => m.to === 28 && m.kind === 'ch'));
-    board[4][0] = 0;
+    board[4 * 8 + 0] = 0;
     assert.ok(generate(board, [5, 2]).some((m) => m.to === 28 && m.kind === 'ch'));
 });
 
 test('checkers capture can resolve check, but cannot capture the enemy king', () => {
     const board = position([4, 7, makePiece('king', 'white')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('rook', 'black')]);
     assert.ok(generate(board, [5, 2]).some((m) => m.to === 28 && m.kind === 'ch'));
-    board[4][3] = makePiece('king', 'black');
+    board[4 * 8 + 3] = makePiece('king', 'black');
     assert.ok(!generate(board, [5, 2]).some((m) => m.kind === 'ch'));
 });
 
@@ -180,12 +176,12 @@ test('rotation is simulated without removing the rook and cannot ignore check', 
     const board = position([7, 4, makePiece('king', 'white')], [6, 4, makePiece('rook', 'white')], [0, 4, makePiece('rook', 'black')]);
     const snapshot = structuredClone(board);
     assert.ok(generate(board, [6, 4]).some((m) => m.kind === 'rotate' && m.piece === 'diagonalrook'));
-    board[6][4] = makePiece('diagonalrook', 'white');
+    board[6 * 8 + 4] = makePiece('diagonalrook', 'white');
     assert.ok(generate(board, [6, 4]).some((m) => m.kind === 'rotate' && m.piece === 'rook'));
-    board[6][4] = 0;
-    board[6][0] = makePiece('rook', 'white');
+    board[6 * 8 + 4] = 0;
+    board[6 * 8 + 0] = makePiece('rook', 'white');
     assert.ok(!generate(board, [6, 0]).some((m) => m.kind === 'rotate'));
-    assert.equal(snapshot[6][4], makePiece('rook', 'white'));
+    assert.equal(snapshot[6 * 8 + 4], makePiece('rook', 'white'));
 });
 
 const click = (state, row, col) => gameReducer(state, { type: 'click', square: [row, col] });
@@ -219,33 +215,33 @@ test('legal white and black moves alternate turns, clear selection, and record t
     const afterWhite = click(click(state, 6, 3), 5, 2);
     assert.equal(afterWhite.turn, 'black');
     assert.equal(afterWhite.selectedSquare, null);
-    assert.equal(afterWhite.board[6][3], 0);
-    assert.equal(afterWhite.board[5][2], makePiece('pawn', 'white'));
+    assert.equal(afterWhite.board[6 * 8 + 3], 0);
+    assert.equal(afterWhite.board[5 * 8 + 2], makePiece('pawn', 'white'));
     assert.deepEqual(afterWhite.lastMove, { from: 51, to: 42, kind: 'm' });
     assert.equal(click(afterWhite, 5, 2), afterWhite);
     const afterBlack = click(click(afterWhite, 1, 3), 2, 2);
     assert.equal(afterBlack.turn, 'white');
-    assert.equal(afterBlack.board[2][2], makePiece('pawn', 'black'));
+    assert.equal(afterBlack.board[2 * 8 + 2], makePiece('pawn', 'black'));
     assert.deepEqual(state, snapshot);
 });
 
 test('live checkers capture removes the jumped piece and spends one turn', () => {
     const state = createGame(position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('pawn', 'black')]));
     const next = click(click(state, 5, 2), 3, 4);
-    assert.equal(next.board[5][2], 0);
-    assert.equal(next.board[4][3], 0);
-    assert.equal(next.board[3][4], makePiece('bishop', 'white'));
+    assert.equal(next.board[5 * 8 + 2], 0);
+    assert.equal(next.board[4 * 8 + 3], 0);
+    assert.equal(next.board[3 * 8 + 4], makePiece('bishop', 'white'));
     assert.equal(next.lastMove.kind, 'ch');
     assert.equal(next.turn, 'black');
     assert.equal(next.selectedSquare, null);
-    assert.equal(state.board[4][3], makePiece('pawn', 'black'));
+    assert.equal(state.board[4 * 8 + 3], makePiece('pawn', 'black'));
 });
 
 test('live ordinary capture replaces its target', () => {
     const state = createGame(position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 2, makePiece('rook', 'white')], [4, 4, makePiece('pawn', 'black')]));
     const next = click(click(state, 4, 2), 4, 4);
-    assert.equal(next.board[4][2], 0);
-    assert.equal(next.board[4][4], makePiece('rook', 'white'));
+    assert.equal(next.board[4 * 8 + 2], 0);
+    assert.equal(next.board[4 * 8 + 4], makePiece('rook', 'white'));
     assert.equal(next.lastMove.kind, 'c');
     assert.equal(next.turn, 'black');
 });
@@ -261,7 +257,7 @@ test('rook switching is a separate action that transforms in place and spends th
     assert.equal(gameReducer(state, { type: 'rotate' }), state);
     const selected = click(state, 6, 0);
     const next = gameReducer(selected, { type: 'rotate' });
-    assert.equal(next.board[6][0], makePiece('diagonalrook', 'white'));
+    assert.equal(next.board[6 * 8 + 0], makePiece('diagonalrook', 'white'));
     assert.equal(next.turn, 'black');
     assert.equal(next.selectedSquare, null);
     assert.equal(click(selected, 6, 0).turn, 'white');
@@ -275,7 +271,7 @@ test('check with an escape is not checkmate', () => {
     assert.deepEqual(getGameStatus(board, 'black'), { kind: 'check' });
     const state = createGame(board, 'black');
     const escaped = click(click(state, 0, 0), 1, 0);
-    assert.equal(escaped.board[1][0], makePiece('king', 'black'));
+    assert.equal(escaped.board[1 * 8 + 0], makePiece('king', 'black'));
     assert.equal(escaped.turn, 'white');
 });
 
@@ -308,13 +304,13 @@ test('a completed move detects stalemate using custom knight attacks', () => {
 });
 
 test('a legal rook rotation prevents stalemate even when no piece can move', () => {
-    const board = Array.from({ length: 8 }, () => Array(8).fill(makePiece('pawn', 'white')));
-    board[0][0] = makePiece('king', 'white');
-    board[7][7] = makePiece('king', 'black');
-    board[3][3] = makePiece('rook', 'white');
+    const board = Array(64).fill(makePiece('pawn', 'white'));
+    board[0 * 8 + 0] = makePiece('king', 'white');
+    board[7 * 8 + 7] = makePiece('king', 'black');
+    board[3 * 8 + 3] = makePiece('rook', 'white');
     assert.deepEqual(generate(board, [3, 3]), [{ from: 27, to: 27, kind: 'rotate', piece: 'diagonalrook' }]);
     assert.deepEqual(getGameStatus(board, 'white'), { kind: 'playing' });
-    board[3][3] = makePiece('pawn', 'white');
+    board[3 * 8 + 3] = makePiece('pawn', 'white');
     assert.deepEqual(getGameStatus(board, 'white'), { kind: 'stalemate' });
 });
 
@@ -322,7 +318,7 @@ test('rotation also evaluates whether the opponent is now in check', () => {
     const board = position([7, 7, makePiece('king', 'white')], [0, 0, makePiece('king', 'black')], [2, 2, makePiece('rook', 'white')]);
     const state = createGame(board);
     const next = gameReducer(click(state, 2, 2), { type: 'rotate' });
-    assert.equal(next.board[2][2], makePiece('diagonalrook', 'white'));
+    assert.equal(next.board[2 * 8 + 2], makePiece('diagonalrook', 'white'));
     assert.equal(next.turn, 'black');
     assert.equal(next.status.kind, 'check');
 });
@@ -346,12 +342,12 @@ test('bishops of either color can jump allies in all four directions without cap
             const move = generate(board, [4, 4]).find((m) => m.to === toRow * 8 + toCol);
             assert.equal(move?.kind, 'm');
             const next = click(click(createGame(board, color), 4, 4), toRow, toCol);
-            assert.equal(next.board[4][4], 0);
-            assert.equal(next.board[4 + dr][4 + dc], makePiece('pawn', color));
-            assert.equal(next.board[toRow][toCol], makePiece('bishop', color));
+            assert.equal(next.board[4 * 8 + 4], 0);
+            assert.equal(next.board[(4 + dr) * 8 + (4 + dc)], makePiece('pawn', color));
+            assert.equal(next.board[toRow * 8 + toCol], makePiece('bishop', color));
             assert.equal(next.turn, color === 'white' ? 'black' : 'white');
             assert.equal(next.selectedSquare, null);
-            assert.equal(board[4][4], makePiece('bishop', color));
+            assert.equal(board[4 * 8 + 4], makePiece('bishop', color));
         }
     }
 });
@@ -374,8 +370,8 @@ test('allied jumps preserve king safety, including jumping over your own king', 
     assert.ok(!generate(pinned, [4, 3]).some((m) => m.to === 17));
     const kingJump = position([3, 3, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, makePiece('bishop', 'white')]);
     const next = click(click(createGame(kingJump), 4, 4), 2, 2);
-    assert.equal(next.board[3][3], makePiece('king', 'white'));
-    assert.equal(next.board[2][2], makePiece('bishop', 'white'));
+    assert.equal(next.board[3 * 8 + 3], makePiece('king', 'white'));
+    assert.equal(next.board[2 * 8 + 2], makePiece('bishop', 'white'));
 });
 
 for (const color of ['white', 'black']) {
@@ -386,24 +382,24 @@ for (const color of ['white', 'black']) {
     for (const capture of [false, true]) {
         test(`${color} pawn ${capture ? 'capture' : 'move'} pauses for promotion and blocks other moves`, () => {
             const board = position([kingRow, 7, makePiece('king', color)], [endRow, 7, makePiece('king', enemy)], [row, capture ? 0 : 1, makePiece('pawn', color)]);
-            if (capture) board[endRow][0] = makePiece('knight', enemy);
+            if (capture) board[endRow * 8 + 0] = makePiece('knight', enemy);
             let state = createGame(board, color);
             state = gameReducer(state, { type: 'click', square: [row, capture ? 0 : 1] });
             state = gameReducer(state, { type: 'click', square: [endRow, 0] });
             assert.deepEqual(state.pendingPromotion, { square: [endRow, 0], color });
             assert.equal(state.turn, color);
-            assert.equal(state.board[endRow][0], makePiece('pawn', color));
+            assert.equal(state.board[endRow * 8 + 0], makePiece('pawn', color));
             assert.equal(state.selectedSquare, null);
             assert.equal(gameReducer(state, { type: 'click', square: [kingRow, 7] }), state);
             assert.equal(gameReducer(state, { type: 'rotate' }), state);
             assert.equal(gameReducer(state, { type: 'promote', piece: 'king' }), state);
             for (const piece of ['queen', 'rook', 'bishop', 'knight']) {
                 const promoted = gameReducer(state, { type: 'promote', piece });
-                assert.equal(promoted.board[endRow][0], makePiece(piece, color));
+                assert.equal(promoted.board[endRow * 8 + 0], makePiece(piece, color));
                 assert.equal(promoted.pendingPromotion, null);
                 assert.equal(promoted.turn, enemy);
                 assert.deepEqual(promoted.lastMove, state.lastMove);
-                assert.equal(state.board[endRow][0], makePiece('pawn', color), 'promotion must not mutate the pending board');
+                assert.equal(state.board[endRow * 8 + 0], makePiece('pawn', color), 'promotion must not mutate the pending board');
             }
             assert.equal(gameReducer(state, { type: 'restart', board }).pendingPromotion, null);
         });
@@ -444,12 +440,23 @@ test('promotion without a pending pawn does nothing', () => {
 
 test('FEN creates signed numeric pieces and zero empty squares', () => {
     const board = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1');
-    assert.deepEqual(board[0], [-4, -2, -3, -6, -7, -3, -2, -4]);
-    assert.deepEqual(board[7], [4, 2, 3, 6, 7, 3, 2, 4]);
-    assert.deepEqual(board[2], Array(8).fill(0));
-    assert.ok(board.flat().every(Number.isInteger));
+    assert.equal(board.length, 64);
+    assert.deepEqual(board.slice(0, 8), [-4, -2, -3, -6, -7, -3, -2, -4]);
+    assert.deepEqual(board.slice(56, 64), [4, 2, 3, 6, 7, 3, 2, 4]);
+    assert.deepEqual(board.slice(16, 24), Array(8).fill(0));
+    assert.ok(board.every(Number.isInteger));
     assert.throws(() => parseFen('8/8/8/8/8/8/8/7x'), /Unknown FEN piece/);
     assert.throws(() => parseFen('8/8/8'), /eight ranks/);
+});
+
+test('flat square indices preserve board edges without wrapping across ranks', () => {
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [0, 0, makePiece('rook', 'white')]);
+    const rookMoves = generate(board, [0, 0]).filter(move => move.kind !== 'rotate');
+    assert.ok(rookMoves.some(move => move.to === 6));
+    assert.ok(rookMoves.some(move => move.to === 48));
+    assert.ok(rookMoves.every(move => Math.floor(move.to / 8) === 0 || move.to % 8 === 0));
+    assert.deepEqual(generate(board, [7, 0]).map(move => move.to).sort((a, b) => a - b), [48, 49, 57]);
+    assert.equal(board.length, 64);
 });
 
 test('all registered forms have unique IDs, color round trips, and valid rotations', () => {
@@ -466,7 +473,7 @@ test('all registered forms have unique IDs, color round trips, and valid rotatio
                 const move = generate(board, [4, 4]).find(m => m.kind === 'rotate');
                 assert.equal(move.piece, definition.rotatesTo);
                 const rotated = applyMove(board, move);
-                assert.equal(rotated[4][4], makePiece(definition.rotatesTo, color));
+                assert.equal(rotated[4 * 8 + 4], makePiece(definition.rotatesTo, color));
                 const back = generate(rotated, [4, 4]).find(m => m.kind === 'rotate');
                 assert.deepEqual(applyMove(rotated, back), board);
                 assert.deepEqual(board, snapshot);

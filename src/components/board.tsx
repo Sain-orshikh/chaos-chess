@@ -27,7 +27,7 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
     const promotionChoice = useRef<HTMLDivElement>(null);
     const statusLabel = useRef<HTMLParagraphElement>(null);
     const wasPromoting = useRef(false);
-    const selectedPiece = selectedSquare ? board[selectedSquare[0]][selectedSquare[1]] : 0;
+    const selectedPiece = selectedSquare ? board[selectedSquare[0] * 8 + selectedSquare[1]] : 0;
     const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare) : [], [board, selectedSquare]);
     const rotation = legalMoves.find(move => move.kind === "rotate");
     const origin = selectedSquare ? selectedSquare[0] * 8 + selectedSquare[1] : null;
@@ -68,7 +68,7 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
             {Array.from({ length: 64 }, (_, index) => {
                 const visualR = Math.floor(index / 8), visualC = index % 8;
                 const row = orientation === "black" ? 7 - visualR : visualR, col = orientation === "black" ? 7 - visualC : visualC;
-                const piece = board[row][col], square = row * 8 + col, selected = origin === square;
+                const square = row * 8 + col, piece = board[square], selected = origin === square;
                 const legal = !showRookChoice && legalMoves.find(move => move.kind !== "rotate" && move.to === square);
                 const latest = lastMove?.from === square || lastMove?.to === square;
                 return <button type="button" key={square} disabled={gameOver || pendingPromotion !== null}

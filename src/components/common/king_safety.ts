@@ -6,11 +6,7 @@ function onBoard(row: number, col: number) {
 }
 
 export function findKing(board: Board, id: number): number {
-    for (let row = 0; row < board.length; row++) {
-        const col = board[row].indexOf(id);
-        if (col !== -1) return row * 8 + col;
-    }
-    return -1;
+    return board.indexOf(id);
 }
 
 /** Pass the king's square in this board to avoid searching again for each candidate. */
@@ -18,11 +14,11 @@ export function isKingSafe(board: Board, color: Color, kingPos = findKing(board,
     if (!Number.isInteger(kingPos) || kingPos < 0 || kingPos >= 64) return false;
     const kingRow = Math.floor(kingPos / 8);
     const kingCol = kingPos % 8;
-    if (board[kingRow][kingCol] !== makePiece("king", color)) return false;
+    if (board[kingPos] !== makePiece("king", color)) return false;
     const enemy = color === "white" ? "black" : "white";
     function enemyMovement(row: number, col: number) {
         if (!onBoard(row, col)) return undefined;
-        const piece = board[row][col];
+        const piece = board[row * 8 + col];
         return pieceColor(piece) === enemy ? pieceDefinition(piece)?.movement : undefined;
     }
 
@@ -38,7 +34,7 @@ export function isKingSafe(board: Board, color: Color, kingPos = findKing(board,
         const landingRow = kingRow - dr;
         const landingCol = kingCol - dc;
         if (enemyMovement(kingRow + dr, kingCol + dc)?.checkers &&
-            onBoard(landingRow, landingCol) && board[landingRow][landingCol] === 0) return false;
+            onBoard(landingRow, landingCol) && board[landingRow * 8 + landingCol] === 0) return false;
     }
 
     for (const [directions, kind] of [[straightDirections, "straight"], [diagonalDirections, "diagonal"]] as const) {
@@ -47,7 +43,7 @@ export function isKingSafe(board: Board, color: Color, kingPos = findKing(board,
                 const row = kingRow + dr * distance;
                 const col = kingCol + dc * distance;
                 if (!onBoard(row, col)) break;
-                if (board[row][col] === 0) continue;
+                if (board[row * 8 + col] === 0) continue;
                 if ((enemyMovement(row, col)?.[kind] ?? 0) >= distance) return false;
                 break;
             }

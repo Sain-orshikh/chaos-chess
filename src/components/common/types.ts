@@ -3,7 +3,8 @@ export type PieceValue = number
 
 export type Color = "white" | "black";
 
-export type Board = number[][];
+// Squares run from a8 = 0 to h1 = 63; square = row * 8 + col.
+export type Board = number[];
 
 export type BasicMove = {
     from: number;

@@ -5,7 +5,7 @@ export function parseFen(fen: string): Board {
     const ranks = fen.split(" ")[0].split("/");
     if (ranks.length !== 8) throw new Error("FEN must contain eight ranks");
 
-    return ranks.map(rank => {
+    return ranks.flatMap(rank => {
         const squares: number[] = [];
         for (const char of rank) {
             if (/[1-8]/.test(char)) {

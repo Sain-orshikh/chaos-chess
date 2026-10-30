@@ -14,11 +14,9 @@ export type GameStatus =
 
 export function getGameStatus(board: Board, turn: Color): GameStatus {
     const safe = isKingSafe(board, turn);
-    for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 8; col++) {
-            if (pieceColor(board[row][col]) === turn && LegalMoveGenerate(board, [row, col]).length > 0) {
-                return { kind: safe ? "playing" : "check" };
-            }
+    for (let square = 0; square < board.length; square++) {
+        if (pieceColor(board[square]) === turn && LegalMoveGenerate(board, [Math.floor(square / 8), square % 8]).length > 0) {
+            return { kind: safe ? "playing" : "check" };
         }
     }
 
@@ -52,9 +50,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     if (state.pendingPromotion) {
         if (action.type !== "promote" || !promotionPieces.includes(action.piece)) return state;
         const { square: [row, col], color } = state.pendingPromotion;
-        if (state.board[row][col] !== makePiece("pawn", color)) return state;
-        const nextBoard = state.board.map(rank => [...rank]);
-        nextBoard[row][col] = makePiece(action.piece, color);
+        if (state.board[row * 8 + col] !== makePiece("pawn", color)) return state;
+        const nextBoard = state.board.slice();
+        nextBoard[row * 8 + col] = makePiece(action.piece, color);
         const nextTurn = color === "white" ? "black" : "white";
         return {
             ...state,
@@ -75,7 +73,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (row < 0 || row >= 8 || col < 0 || col >= 8) return state;
 
         if (!selectedSquare) {
-            if (pieceColor(board[row][col]) !== turn) return state;
+            if (pieceColor(board[row * 8 + col]) !== turn) return state;
             return { ...state, selectedSquare: action.square };
         }
 
@@ -98,7 +96,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     const toRow = Math.floor(move.to / 8)
     const toCol = move.to % 8
-    const movedPiece = nextBoard[toRow][toCol]
+    const movedPiece = nextBoard[move.to]
 
     const needsPromotion = movedPiece === makePiece("pawn", turn) && toRow === (turn === "white" ? 0 : 7);
     if (needsPromotion) {
