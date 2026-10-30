@@ -1,3 +1,4 @@
+import { logger } from "../logging/logger.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateTokenAndSetCookie, clearTokenCookie } from "../utils/generateToken.js";
@@ -23,7 +24,7 @@ export const signup = async (req, res) => {
     } catch (error) {
         if (validationResponse(error, res)) return;
         if (error.code === 11000) return res.status(400).json({ error: "Username is already taken." });
-        console.error("Signup failed:", error.name);
+        (req.log || logger).error({ err: error, event: "signup_failed" }, "Signup failed");
         return res.status(500).json({ error: "Could not create your account. Please try again." });
     }
 };
@@ -42,7 +43,7 @@ export const login = async (req, res) => {
         return res.json(publicUser(user));
     } catch (error) {
         if (validationResponse(error, res)) return;
-        console.error("Login failed:", error.name);
+        (req.log || logger).error({ err: error, event: "login_failed" }, "Login failed");
         return res.status(500).json({ error: "Could not sign in. Please try again." });
     }
 };

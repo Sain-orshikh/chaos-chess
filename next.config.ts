@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   async rewrites() {
+    // Services owns /api routing on Vercel. Never send deployed requests to localhost.
+    if (process.env.VERCEL) return [];
     const backend = (process.env.API_BACKEND_URL || "http://127.0.0.1:5000").replace(/\/$/, "");
     return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
   },

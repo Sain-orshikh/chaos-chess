@@ -431,7 +431,7 @@ h1, h2, h3 {
   object-fit: contain;
   margin: 0 auto 26px;
   align-self: center;
-  filter: drop-shadow(0 6px 0 #0005);
+  filter: drop-shadow(0 6px 0 #0001);
 }
 .opponent-title {
   font: 600 27px var(--font-display), Impact, sans-serif;
@@ -833,7 +833,7 @@ h1, h2, h3 {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 3px 1px #0005);
+  filter: drop-shadow(0 3px 1px #0001);
 }
 .demo-enemy {
   left: 57.1429%;

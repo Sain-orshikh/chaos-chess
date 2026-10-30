@@ -26,21 +26,21 @@ test("unexpected keys, arrays, nested operators, and stat writes are rejected", 
     for (const body of [null, [], { $where: "true" }, { elo: 1000 }, JSON.parse('{"__proto__":{"admin":true}}')]) assert.throws(() => fields(body, ["username"]), ValidationError);
 });
 
-test("rate limits reject excess requests and reset after the window", () => {
+test("rate limits reject excess requests and reset after the window", async () => {
     let time = 1000, passed = 0;
     const limiter = rateLimit({ limit: 2, windowMs: 60_000, now: () => time });
     const request = { ip: "client-a", headers: { "x-forwarded-for": "spoofed" } };
-    limiter(request, response(), () => passed++);
-    limiter(request, response(), () => passed++);
-    const denied = response(); limiter(request, denied, () => passed++);
+    await limiter(request, response(), () => passed++);
+    await limiter(request, response(), () => passed++);
+    const denied = response(); await limiter(request, denied, () => passed++);
     assert.equal(passed, 2); assert.equal(denied.statusCode, 429); assert.equal(denied.headers["Retry-After"], 60);
-    limiter({ ip: "client-b" }, response(), () => passed++); assert.equal(passed, 3);
-    time += 60_000; limiter(request, response(), () => passed++); assert.equal(passed, 4);
+    await limiter({ ip: "client-b" }, response(), () => passed++); assert.equal(passed, 3);
+    time += 60_000; await limiter(request, response(), () => passed++); assert.equal(passed, 4);
 });
-test("profile update limits can follow the account across IPs", () => {
+test("profile update limits can follow the account across IPs", async () => {
     const limiter = rateLimit({ limit: 1, windowMs: 1000, key: req => req.user._id });
-    limiter({ ip: "one", user: { _id: "same" } }, response(), () => {});
-    const res = response(); limiter({ ip: "two", user: { _id: "same" } }, res, () => assert.fail("must be limited")); assert.equal(res.statusCode, 429);
+    await limiter({ ip: "one", user: { _id: "same" } }, response(), () => {});
+    const res = response(); await limiter({ ip: "two", user: { _id: "same" } }, res, () => assert.fail("must be limited")); assert.equal(res.statusCode, 429);
 });
 
 for (const format of ["png", "jpeg", "webp", "gif"]) {

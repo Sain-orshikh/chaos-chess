@@ -36,7 +36,25 @@ Profile images use `{ name, type, data }`, where `data` is a base64 data URL. On
 - Profile updates: 10 attempts per 15 minutes per authenticated account.
 - Excess requests receive HTTP 429 with `Retry-After`.
 
-The limits are held in memory for one API process and reset when it restarts. For multiple instances, add a shared store or gateway limiter. Forwarded IP headers are not trusted by default. Behind the Next.js proxy, configure `TRUST_PROXY` only for trusted proxy IPs/CIDRs and ensure that ingress replaces untrusted forwarding headers; otherwise requests share the proxy’s IP limit. Restrict direct access to the backend in production.
+Production and Vercel use atomic MongoDB counters shared across instances. Counter keys hash the client identifier and time window; a TTL index cleans up expired counters. If the store is unavailable, requests receive 503 rather than bypassing limits. Local development uses in-memory counters. Vercel's overwritten ingress IP header is trusted only on Vercel. For other hosting, configure `TRUST_PROXY` only for trusted proxy IPs/CIDRs that replace client-supplied forwarding headers.
+
+## Vercel hosting and logs
+
+`vercel.json` uses Vercel Services (beta) to deploy Next.js and the existing Express app together. `/api/*` routes to the `backend` service; all other paths route to Next.js. Express exports its app without opening a listening socket on Vercel. MongoDB connections and their initialization promise are reused by warm instances.
+
+In the existing Vercel project, add these environment variables for Preview and Production before deploying:
+
+- `MONGODB_URI`: the hosted MongoDB connection string, with network access configured for the deployment.
+- `JWT_SECRET`: a long random signing secret.
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`: the existing image account credentials.
+- `FRONTEND_URL`: the exact production origin. Same-origin preview requests are also accepted automatically.
+- Optional `LOG_LEVEL` (default `info`).
+
+Do not configure `API_BACKEND_URL`, `PORT`, or `TRUST_PROXY` for this Vercel setup. Keep credentials server-only, without a `NEXT_PUBLIC_` prefix. Existing `VITE_CLOUDINARY_CLOUD_NAME` is accepted as a fallback, but new setups should use `CLOUDINARY_CLOUD_NAME`.
+
+Backend logs are structured JSON emitted through Pino to stdout/stderr and captured in the project's **Logs** tab on Vercel. Each request gets an `X-Request-Id` response header; search its `reqId` in Runtime Logs to correlate errors with request status and duration. Headers, cookies, request bodies, URL query strings, credentials, and image data are excluded or redacted. Logs are not written to local files. Vercel's retention depends on the plan; connect a log drain if longer retention is needed.
+
+Vercel Web Analytics is mounted once in the root layout. After deploying, visit the site to send page views and inspect the project's Analytics tab. Local games remain unrated; analytics does not update Elo or match counts.
 
 ## Checks
 
@@ -46,6 +64,6 @@ pnpm lint
 pnpm build
 ```
 
-The tests cover the custom engine, injection payloads, upload validation, rate limits, and session validation. UI checks cover desktop/mobile navigation, setup, local play, rook actions, and the Encyclopedia.
+The tests cover the custom engine, injection payloads, upload validation, rate limits, session validation, MongoDB connection reuse, shared counter races, and HTTP log redaction. UI checks cover desktop/mobile navigation, setup, local play, rook actions, and the Encyclopedia.
 
 Fonts are self-hosted Barlow and Barlow Condensed under the included Open Font License. The sidebar uses the bishop SVG and the lettering from the original logo concept. The standalone prototype remains in `design/`.

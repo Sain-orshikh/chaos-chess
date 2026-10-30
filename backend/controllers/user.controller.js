@@ -1,3 +1,4 @@
+import { logger } from "../logging/logger.js";
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { fields, username, password, profileImage, ValidationError, validationResponse } from "../security/validation.js";
@@ -42,7 +43,7 @@ export const updateUser = async (req, res) => {
     } catch (error) {
         if (validationResponse(error, res)) return;
         if (error.code === 11000) return res.status(400).json({ error: "Username is already taken." });
-        console.error("Profile update failed:", error.name);
+        (req.log || logger).error({ err: error, event: "profile_update_failed" }, "Profile update failed");
         return res.status(500).json({ error: "Could not save your profile. Please try again." });
     }
 };
