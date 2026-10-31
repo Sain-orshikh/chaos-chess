@@ -1,0 +1,567 @@
+{
+  "measuredAt": "2026-10-31T06:04:10.628Z",
+  "mode": "alpha-beta",
+  "fixture": {
+    "seed": 20261031,
+    "attempt": 5,
+    "fen": "r1b1kn1r/p1npp2p/pp1bp2Q/8/2P2PP1/B4KP1/P1q5/R4BNR w - - 0 17",
+    "board": [
+      -4,
+      0,
+      -3,
+      0,
+      -7,
+      -2,
+      0,
+      -4,
+      -1,
+      0,
+      -2,
+      -1,
+      -1,
+      0,
+      0,
+      -1,
+      -1,
+      -1,
+      0,
+      -3,
+      -1,
+      0,
+      0,
+      6,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0,
+      3,
+      0,
+      0,
+      0,
+      0,
+      7,
+      1,
+      0,
+      1,
+      0,
+      -6,
+      0,
+      0,
+      0,
+      0,
+      0,
+      4,
+      0,
+      0,
+      0,
+      0,
+      3,
+      2,
+      4
+    ],
+    "turn": "white",
+    "pieces": 27,
+    "pliesPlayed": 32,
+    "history": [
+      {
+        "from": 50,
+        "to": 43,
+        "kind": "m"
+      },
+      {
+        "from": 3,
+        "to": 18,
+        "kind": "m"
+      },
+      {
+        "from": 51,
+        "to": 42,
+        "kind": "m"
+      },
+      {
+        "from": 5,
+        "to": 19,
+        "kind": "m"
+      },
+      {
+        "from": 54,
+        "to": 47,
+        "kind": "m"
+      },
+      {
+        "from": 10,
+        "to": 17,
+        "kind": "m"
+      },
+      {
+        "from": 59,
+        "to": 44,
+        "kind": "m"
+      },
+      {
+        "from": 4,
+        "to": 3,
+        "kind": "m"
+      },
+      {
+        "from": 44,
+        "to": 54,
+        "kind": "m"
+      },
+      {
+        "from": 9,
+        "to": 16,
+        "kind": "m"
+      },
+      {
+        "from": 47,
+        "to": 38,
+        "kind": "m"
+      },
+      {
+        "from": 6,
+        "to": 5,
+        "kind": "m"
+      },
+      {
+        "from": 53,
+        "to": 44,
+        "kind": "m"
+      },
+      {
+        "from": 18,
+        "to": 42,
+        "kind": "c"
+      },
+      {
+        "from": 60,
+        "to": 53,
+        "kind": "m"
+      },
+      {
+        "from": 13,
+        "to": 20,
+        "kind": "m"
+      },
+      {
+        "from": 44,
+        "to": 37,
+        "kind": "m"
+      },
+      {
+        "from": 3,
+        "to": 4,
+        "kind": "m"
+      },
+      {
+        "from": 55,
+        "to": 46,
+        "kind": "m"
+      },
+      {
+        "from": 19,
+        "to": 10,
+        "kind": "m"
+      },
+      {
+        "from": 54,
+        "to": 55,
+        "kind": "m"
+      },
+      {
+        "from": 42,
+        "to": 52,
+        "kind": "c"
+      },
+      {
+        "from": 53,
+        "to": 45,
+        "kind": "m"
+      },
+      {
+        "from": 14,
+        "to": 23,
+        "kind": "m"
+      },
+      {
+        "from": 43,
+        "to": 34,
+        "kind": "m"
+      },
+      {
+        "from": 10,
+        "to": 19,
+        "kind": "m"
+      },
+      {
+        "from": 58,
+        "to": 40,
+        "kind": "m"
+      },
+      {
+        "from": 52,
+        "to": 49,
+        "kind": "c"
+      },
+      {
+        "from": 57,
+        "to": 50,
+        "kind": "m"
+      },
+      {
+        "from": 1,
+        "to": 10,
+        "kind": "m"
+      },
+      {
+        "from": 55,
+        "to": 23,
+        "kind": "c"
+      },
+      {
+        "from": 49,
+        "to": 50,
+        "kind": "c"
+      }
+    ],
+    "legalMoves": 38
+  },
+  "environment": {
+    "node": "v26.10.0",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-1355U",
+    "platform": "linux"
+  },
+  "engineSha256": "2b5be5c2c1b3327e093af0e146703f36ad7928b896f7a0eddbb94eabbffb320d",
+  "methodology": "Actual production Engine; depths 1–6; three trials each after three depth-2 warmups. Each trial has an external 5-second wall-time limit, including possible message-delivery delay. A terminated trial is not a complete depth result. Generator timing: five warmed 100-ms batches. Optional engine counters enabled. In --no-pruning mode only the cutoff condition is disabled in memory for a plain-minimax baseline; production source is unchanged.",
+  "generation": {
+    "medianMicroseconds": 16.855364233945693,
+    "samples": [
+      15.515991626608795,
+      15.606093106675008,
+      18.57137047353761,
+      17.616210674652095,
+      16.855364233945693
+    ]
+  },
+  "depths": [
+    {
+      "depth": 1,
+      "samples": [
+        {
+          "ms": 4.637745999999879,
+          "move": {
+            "from": 23,
+            "to": 15,
+            "kind": "c"
+          },
+          "stats": {
+            "positionsVisited": 39,
+            "positionsEvaluated": 38,
+            "materialEvaluations": 38,
+            "terminalPositions": 0,
+            "movesExplored": 38,
+            "generatedMoves": 1650,
+            "cutoffs": 0,
+            "movesSkipped": 0,
+            "elapsedMs": 4.077849999999671
+          }
+        },
+        {
+          "ms": 2.8382990000000063,
+          "move": {
+            "from": 23,
+            "to": 15,
+            "kind": "c"
+          },
+          "stats": {
+            "positionsVisited": 39,
+            "positionsEvaluated": 38,
+            "materialEvaluations": 38,
+            "terminalPositions": 0,
+            "movesExplored": 38,
+            "generatedMoves": 1650,
+            "cutoffs": 0,
+            "movesSkipped": 0,
+            "elapsedMs": 2.792887999999948
+          }
+        },
+        {
+          "ms": 3.7289949999999408,
+          "move": {
+            "from": 23,
+            "to": 15,
+            "kind": "c"
+          },
+          "stats": {
+            "positionsVisited": 39,
+            "positionsEvaluated": 38,
+            "materialEvaluations": 38,
+            "terminalPositions": 0,
+            "movesExplored": 38,
+            "generatedMoves": 1650,
+            "cutoffs": 0,
+            "movesSkipped": 0,
+            "elapsedMs": 3.687633999999889
+          }
+        }
+      ],
+      "completed": true,
+      "stats": {
+        "positionsVisited": 39,
+        "positionsEvaluated": 38,
+        "materialEvaluations": 38,
+        "terminalPositions": 0,
+        "movesExplored": 38,
+        "generatedMoves": 1650,
+        "cutoffs": 0,
+        "movesSkipped": 0,
+        "elapsedMs": 4.077849999999671
+      },
+      "medianMs": 3.7289949999999408
+    },
+    {
+      "depth": 2,
+      "samples": [
+        {
+          "ms": 49.95817999999963,
+          "move": {
+            "from": 23,
+            "to": 31,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 606,
+            "positionsEvaluated": 567,
+            "materialEvaluations": 567,
+            "terminalPositions": 0,
+            "movesExplored": 605,
+            "generatedMoves": 20117,
+            "cutoffs": 35,
+            "movesSkipped": 1045,
+            "elapsedMs": 49.91757499999994
+          }
+        },
+        {
+          "ms": 42.700288,
+          "move": {
+            "from": 23,
+            "to": 31,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 606,
+            "positionsEvaluated": 567,
+            "materialEvaluations": 567,
+            "terminalPositions": 0,
+            "movesExplored": 605,
+            "generatedMoves": 20117,
+            "cutoffs": 35,
+            "movesSkipped": 1045,
+            "elapsedMs": 42.417531000000054
+          }
+        },
+        {
+          "ms": 33.81476599999996,
+          "move": {
+            "from": 23,
+            "to": 31,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 606,
+            "positionsEvaluated": 567,
+            "materialEvaluations": 567,
+            "terminalPositions": 0,
+            "movesExplored": 605,
+            "generatedMoves": 20117,
+            "cutoffs": 35,
+            "movesSkipped": 1045,
+            "elapsedMs": 33.76307999999972
+          }
+        }
+      ],
+      "completed": true,
+      "stats": {
+        "positionsVisited": 606,
+        "positionsEvaluated": 567,
+        "materialEvaluations": 567,
+        "terminalPositions": 0,
+        "movesExplored": 605,
+        "generatedMoves": 20117,
+        "cutoffs": 35,
+        "movesSkipped": 1045,
+        "elapsedMs": 49.91757499999994
+      },
+      "medianMs": 42.700288
+    },
+    {
+      "depth": 3,
+      "samples": [
+        {
+          "ms": 196.06747600000017,
+          "move": {
+            "from": 23,
+            "to": 22,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 2592,
+            "positionsEvaluated": 2208,
+            "materialEvaluations": 2208,
+            "terminalPositions": 0,
+            "movesExplored": 2591,
+            "generatedMoves": 100173,
+            "cutoffs": 292,
+            "movesSkipped": 8993,
+            "elapsedMs": 196.01731699999982
+          }
+        },
+        {
+          "ms": 150.91482499999984,
+          "move": {
+            "from": 23,
+            "to": 22,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 2592,
+            "positionsEvaluated": 2208,
+            "materialEvaluations": 2208,
+            "terminalPositions": 0,
+            "movesExplored": 2591,
+            "generatedMoves": 100173,
+            "cutoffs": 292,
+            "movesSkipped": 8993,
+            "elapsedMs": 150.86469099999977
+          }
+        },
+        {
+          "ms": 169.8991430000001,
+          "move": {
+            "from": 23,
+            "to": 22,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 2592,
+            "positionsEvaluated": 2208,
+            "materialEvaluations": 2208,
+            "terminalPositions": 0,
+            "movesExplored": 2591,
+            "generatedMoves": 100173,
+            "cutoffs": 292,
+            "movesSkipped": 8993,
+            "elapsedMs": 169.83439099999987
+          }
+        }
+      ],
+      "completed": true,
+      "stats": {
+        "positionsVisited": 2592,
+        "positionsEvaluated": 2208,
+        "materialEvaluations": 2208,
+        "terminalPositions": 0,
+        "movesExplored": 2591,
+        "generatedMoves": 100173,
+        "cutoffs": 292,
+        "movesSkipped": 8993,
+        "elapsedMs": 196.01731699999982
+      },
+      "medianMs": 169.8991430000001
+    },
+    {
+      "depth": 4,
+      "samples": [
+        {
+          "ms": 2031.9826760000005,
+          "move": {
+            "from": 23,
+            "to": 31,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 36400,
+            "positionsEvaluated": 34172,
+            "materialEvaluations": 34120,
+            "terminalPositions": 52,
+            "movesExplored": 36399,
+            "generatedMoves": 1288306,
+            "cutoffs": 1817,
+            "movesSkipped": 49577,
+            "elapsedMs": 2031.9495419999998
+          }
+        },
+        {
+          "ms": 603.9688180000003,
+          "move": {
+            "from": 23,
+            "to": 31,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 36400,
+            "positionsEvaluated": 34172,
+            "materialEvaluations": 34120,
+            "terminalPositions": 52,
+            "movesExplored": 36399,
+            "generatedMoves": 1288306,
+            "cutoffs": 1817,
+            "movesSkipped": 49577,
+            "elapsedMs": 603.9404400000003
+          }
+        },
+        {
+          "ms": 1746.540473,
+          "move": {
+            "from": 23,
+            "to": 31,
+            "kind": "m"
+          },
+          "stats": {
+            "positionsVisited": 36400,
+            "positionsEvaluated": 34172,
+            "materialEvaluations": 34120,
+            "terminalPositions": 52,
+            "movesExplored": 36399,
+            "generatedMoves": 1288306,
+            "cutoffs": 1817,
+            "movesSkipped": 49577,
+            "elapsedMs": 1746.5217510000002
+          }
+        }
+      ],
+      "completed": true,
+      "stats": {
+        "positionsVisited": 36400,
+        "positionsEvaluated": 34172,
+        "materialEvaluations": 34120,
+        "terminalPositions": 52,
+        "movesExplored": 36399,
+        "generatedMoves": 1288306,
+        "cutoffs": 1817,
+        "movesSkipped": 49577,
+        "elapsedMs": 2031.9495419999998
+      },
+      "medianMs": 1746.540473
+    },
+    {
+      "depth": 5,
+      "samples": [],
+      "completed": false,
+      "timedOutTrial": 1,
+      "trialLimitMs": 5000
+    }
+  ]
+}

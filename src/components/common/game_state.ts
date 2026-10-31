@@ -1,21 +1,28 @@
-import { makePiece, pieceColor } from "./pieces";
+import { MATE_SCORE, pieceColor, promotionPieces } from "./pieces";
 import { applyMove } from "./apply_move";
 import LegalMoveGenerate from "./legal_move";
 import { isKingSafe } from "./king_safety";
-import type { BasicMove, Board, Color } from "./types";
+import type { BasicMove, Board, Color, PromotionPiece } from "./types";
 
 export type Square = [number, number];
-export const promotionPieces = ["queen", "rook", "bishop", "knight"] as const;
-export type PromotionPiece = typeof promotionPieces[number];
+export { promotionPieces } from "./pieces";
+export type { PromotionPiece } from "./types";
 export type GameStatus =
     | { kind: "playing" | "check" }
     | { kind: "checkmate"; winner: Color }
     | { kind: "stalemate" };
 
+/** Search must use terminal results before material evaluation. Null means play continues. */
+export function gameResultScore(status: GameStatus): number | null {
+    if (status.kind === "checkmate") return status.winner === "white" ? MATE_SCORE : -MATE_SCORE;
+    if (status.kind === "stalemate") return 0;
+    return null;
+}
+
 export function getGameStatus(board: Board, turn: Color): GameStatus {
     const safe = isKingSafe(board, turn);
     for (let square = 0; square < board.length; square++) {
-        if (pieceColor(board[square]) === turn && LegalMoveGenerate(board, [Math.floor(square / 8), square % 8]).length > 0) {
+        if (pieceColor(board[square]) === turn && LegalMoveGenerate(board, square).length > 0) {
             return { kind: safe ? "playing" : "check" };
         }
     }
@@ -34,6 +41,8 @@ export type GameState = {
     pendingPromotion: {
         square: Square;
         color: Color;
+        boardBefore: Board;
+        moves: BasicMove[];
     } | null;
 };
 
@@ -49,19 +58,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     if (action.type === "restart") return createGame(action.board);
     if (state.pendingPromotion) {
         if (action.type !== "promote" || !promotionPieces.includes(action.piece)) return state;
-        const { square: [row, col], color } = state.pendingPromotion;
-        if (state.board[row * 8 + col] !== makePiece("pawn", color)) return state;
-        const nextBoard = state.board.slice();
-        nextBoard[row * 8 + col] = makePiece(action.piece, color);
-        const nextTurn = color === "white" ? "black" : "white";
-        return {
-            ...state,
-            board: nextBoard,
-            turn: nextTurn,
-            pendingPromotion: null,
-            selectedSquare: null,
-            status: getGameStatus(nextBoard, nextTurn),
-        };
+        const { boardBefore, moves } = state.pendingPromotion;
+        const move = moves.find(candidate => candidate.kind !== "rotate" && candidate.promotion === action.piece);
+        if (!move) return state;
+        return completeMove({ ...state, board: boardBefore }, move);
     }
     if (action.type === "promote") return state;
     if (state.status.kind === "checkmate" || state.status.kind === "stalemate") return state;
@@ -83,7 +83,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     if (!selectedSquare) return state;
-    const move = LegalMoveGenerate(board, selectedSquare).find((candidate) =>
+    const legalMoves = LegalMoveGenerate(board, selectedSquare[0] * 8 + selectedSquare[1]);
+    const move = legalMoves.find((candidate) =>
         action.type === "rotate"
             ? candidate.kind === "rotate"
             : candidate.kind !== "rotate" && candidate.to === action.square[0] * 8 + action.square[1]
@@ -92,33 +93,37 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     // Rejected placements keep the selection, position, and turn unchanged.
     if (!move) return state;
 
-    const nextBoard = applyMove(board, move);
-
-    const toRow = Math.floor(move.to / 8)
-    const toCol = move.to % 8
-    const movedPiece = nextBoard[move.to]
-
-    const needsPromotion = movedPiece === makePiece("pawn", turn) && toRow === (turn === "white" ? 0 : 7);
-    if (needsPromotion) {
+    if (move.kind !== "rotate" && move.promotion) {
+        // Preview the pawn's destination while the human chooses a complete generated move.
+        // Search and real move application never use this intermediate board.
+        const preview = board.slice();
+        preview[move.to] = preview[move.from];
+        preview[move.from] = 0;
         return {
             ...state,
-            board: nextBoard,
+            board: preview,
             selectedSquare: null,
-            lastMove: move,
+            lastMove: { from: move.from, to: move.to, kind: move.kind },
             pendingPromotion: {
-                square: [toRow, toCol],
+                square: [Math.floor(move.to / 8), move.to % 8],
                 color: turn,
+                boardBefore: board,
+                moves: legalMoves.filter(candidate => candidate.kind !== "rotate" && candidate.to === move.to && candidate.promotion),
             },
         };
     }
+    return completeMove(state, move);
+}
 
-    const nextTurn = turn === "white" ? "black" : "white";
+function completeMove(state: GameState, move: BasicMove): GameState {
+    const board = applyMove(state.board, move);
+    const turn = state.turn === "white" ? "black" : "white";
     return {
-        board: nextBoard,
-        turn: nextTurn,
+        board,
+        turn,
         selectedSquare: null,
         lastMove: move,
-        status: getGameStatus(nextBoard, nextTurn),
-        pendingPromotion: null
+        status: getGameStatus(board, turn),
+        pendingPromotion: null,
     };
 }

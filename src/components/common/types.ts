@@ -2,6 +2,7 @@ export type PieceName = "king" | "queen" | "rook" | "diagonalrook" | "bishop" | 
 export type PieceValue = number
 
 export type Color = "white" | "black";
+export type PromotionPiece = "queen" | "rook" | "bishop" | "knight";
 
 // Squares run from a8 = 0 to h1 = 63; square = row * 8 + col.
 export type Board = number[];
@@ -9,7 +10,8 @@ export type Board = number[];
 export type BasicMove = {
     from: number;
     to: number;
-    kind: "m" | "c" | "ch" | "p"; //c-capture, m-move, ch-checkers, p-promote
+    kind: "m" | "c" | "ch"; // Capture, quiet move, or checkers capture.
+    promotion?: PromotionPiece;
 } | {
     from: number;
     to: number;
@@ -18,14 +20,6 @@ export type BasicMove = {
 };
 
 export { pieceIds, pieceNames } from "./pieces";
-
-export const pieceValues: Record<string, PieceValue> = {
-    q: 800,
-    r: 500,
-    k: 400,
-    b: 200,
-    p: 100,
-}
 
 export const offsetsS = [-8, 8, -1, 1]
 export const offsetsD = [-9, -7, 7, 9]

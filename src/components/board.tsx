@@ -28,7 +28,7 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
     const statusLabel = useRef<HTMLParagraphElement>(null);
     const wasPromoting = useRef(false);
     const selectedPiece = selectedSquare ? board[selectedSquare[0] * 8 + selectedSquare[1]] : 0;
-    const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare) : [], [board, selectedSquare]);
+    const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare[0] * 8 + selectedSquare[1]) : [], [board, selectedSquare]);
     const rotation = legalMoves.find(move => move.kind === "rotate");
     const origin = selectedSquare ? selectedSquare[0] * 8 + selectedSquare[1] : null;
     const selectedDefinition = pieceDefinition(selectedPiece);
@@ -72,14 +72,14 @@ export default function Board({ orientation = "white", playerName = "Anonymous" 
                 const legal = !showRookChoice && legalMoves.find(move => move.kind !== "rotate" && move.to === square);
                 const latest = lastMove?.from === square || lastMove?.to === square;
                 return <button type="button" key={square} disabled={gameOver || pendingPromotion !== null}
-                    aria-label={`${"abcdefgh"[col]}${8 - row}${piece ? ` ${pieceColor(piece)} ${pieceDefinition(piece)!.label}` : " empty"}${legal ? legal.kind === "p" ? " promotion destination" : " legal destination" : ""}`}
+                    aria-label={`${"abcdefgh"[col]}${8 - row}${piece ? ` ${pieceColor(piece)} ${pieceDefinition(piece)!.label}` : " empty"}${legal ? legal.kind !== "rotate" && legal.promotion ? " promotion destination" : " legal destination" : ""}`}
                     aria-pressed={selected} className={`board-square ${(row + col) % 2 ? "dark" : "light"}${selected ? " selected" : latest ? " latest" : ""}`}
                     onPointerDown={event => setPointer({ x: event.clientX, y: event.clientY, mouse: event.pointerType === "mouse" })}
                     onClick={() => { if (!selectedSquare || selected) setMovingRook(null); dispatch({ type: "click", square: [row, col] }); }}>
                     {visualC === 0 && <span className="coordinate rank">{8 - row}</span>}
                     {visualR === 7 && <span className="coordinate file">{"abcdefgh"[col]}</span>}
                     {piece !== 0 && !(selected && carriedPiece) && <BoardPiece code={piece} />}
-                    {legal && <span className={`legal-marker ${legal.kind === "m" || legal.kind === "p" ? "quiet" : "capture"}`} />}
+                    {legal && <span className={`legal-marker ${legal.kind === "m" ? "quiet" : "capture"}`} />}
                 </button>;
             })}
         </div>

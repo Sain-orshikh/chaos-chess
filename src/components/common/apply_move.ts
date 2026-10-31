@@ -1,12 +1,11 @@
-import { makePiece, pieceColor, pieceDefinition } from "./pieces";
+import { makePiece, pieceColor, pieceDefinition, pieceIds, promotionPieces } from "./pieces";
 import type { BasicMove, Board } from "./types";
 
-/** Apply an already validated move without changing the original position. */
+/** Apply an already validated move directly to the supplied board. */
 export function makeMove(board: Board, move: BasicMove): Board {
     const piece = board[move.from];
     if (!piece) throw new Error("Cannot move an empty square");
 
-    // This copies all 64 entries. Legal generation does this once per candidate.
     if (move.kind === "rotate") {
         if (pieceDefinition(piece)?.rotatesTo !== move.piece) {
             throw new Error("Invalid piece rotation");
@@ -15,16 +14,23 @@ export function makeMove(board: Board, move: BasicMove): Board {
         return board;
     }
 
+    const color = pieceColor(piece)!;
+    const promotes = Math.abs(piece) === pieceIds.pawn && Math.floor(move.to / 8) === (color === "white" ? 0 : 7);
+    if (promotes !== Boolean(move.promotion) || (move.promotion && !promotionPieces.includes(move.promotion))) {
+        throw new Error("A promotion move must specify a valid promotion piece");
+    }
+
     if (move.kind === "ch") {
         // A bishop jump captures the square halfway between source and destination.
         board[(move.from + move.to) / 2] = 0;
     }
 
     board[move.from] = 0;
-    board[move.to] = piece;
+    board[move.to] = move.promotion ? makePiece(move.promotion, color) : piece;
     return board;
 }
 
+/** Return a new position for an actual game update, preserving the original board. */
 export function applyMove(board: Board, move: BasicMove): Board {
     const nextBoard = board.slice();
     makeMove(nextBoard, move);

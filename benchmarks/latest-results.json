@@ -1,0 +1,2265 @@
+{
+  "environment": {
+    "node": "v26.10.0",
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-1355U",
+    "logicalCpus": 12
+  },
+  "measuredAt": "2026-10-30T18:40:22.948Z",
+  "methodology": "7 synthetic fixtures, White to move. 5 x 100ms warmed full-side generation samples; 3 full-tree trials per depth (900ms limit each); 3 independent iterative alpha-beta trials (1200ms total each, max depth 7). Timing excludes loading/transpilation. Four promotion choices included. Full move generation at search leaves detects terminal positions. No production code modified.",
+  "fixtures": [
+    {
+      "name": "Starting position",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",
+      "board": [
+        -4,
+        -2,
+        -3,
+        -6,
+        -7,
+        -3,
+        -2,
+        -4,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        4,
+        2,
+        3,
+        6,
+        7,
+        3,
+        2,
+        4
+      ],
+      "pieces": 32,
+      "legalMoves": 22,
+      "generation": {
+        "medianMicroseconds": 7.887313209331666,
+        "medianLegalMovesPerSecond": 2789289.510396428,
+        "samples": [
+          {
+            "microsecondsPerPosition": 8.58628451236264,
+            "legalMovesPerSecond": 2562225.8345066626
+          },
+          {
+            "microsecondsPerPosition": 7.887313209331666,
+            "legalMovesPerSecond": 2789289.510396428
+          },
+          {
+            "microsecondsPerPosition": 7.514017503004809,
+            "legalMovesPerSecond": 2927861.15965292
+          },
+          {
+            "microsecondsPerPosition": 7.824431555068832,
+            "legalMovesPerSecond": 2811705.853027487
+          },
+          {
+            "microsecondsPerPosition": 8.419707436069986,
+            "legalMovesPerSecond": 2612917.392563084
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 22,
+          "nodes": 23,
+          "medianMs": 0.047768000000132815,
+          "trials": [
+            {
+              "leaves": 22,
+              "nodes": 23,
+              "ms": 0.25619400000005044
+            },
+            {
+              "leaves": 22,
+              "nodes": 23,
+              "ms": 0.047768000000132815
+            },
+            {
+              "leaves": 22,
+              "nodes": 23,
+              "ms": 0.024001999999882173
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 482,
+          "nodes": 505,
+          "medianMs": 0.5858570000000327,
+          "trials": [
+            {
+              "leaves": 482,
+              "nodes": 505,
+              "ms": 0.5858570000000327
+            },
+            {
+              "leaves": 482,
+              "nodes": 505,
+              "ms": 0.7258109999997941
+            },
+            {
+              "leaves": 482,
+              "nodes": 505,
+              "ms": 0.24135400000000118
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 11826,
+          "nodes": 12331,
+          "medianMs": 4.442678999999998,
+          "trials": [
+            {
+              "leaves": 11826,
+              "nodes": 12331,
+              "ms": 4.4185959999999795
+            },
+            {
+              "leaves": 11826,
+              "nodes": 12331,
+              "ms": 5.878112000000101
+            },
+            {
+              "leaves": 11826,
+              "nodes": 12331,
+              "ms": 4.442678999999998
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": true,
+          "leaves": 287517,
+          "nodes": 299848,
+          "medianMs": 282.816233,
+          "trials": [
+            {
+              "leaves": 287517,
+              "nodes": 299848,
+              "ms": 394.55086499999993
+            },
+            {
+              "leaves": 287517,
+              "nodes": 299848,
+              "ms": 136.1458459999999
+            },
+            {
+              "leaves": 287517,
+              "nodes": 299848,
+              "ms": 282.816233
+            }
+          ]
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1202.1912470000002,
+          "visitedNodes": 118784,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 2.037268999999924,
+              "nodes": 23,
+              "score": 0
+            },
+            {
+              "depth": 2,
+              "ms": 1.4435750000002372,
+              "nodes": 66,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 6.912262000000283,
+              "nodes": 631,
+              "score": 100
+            },
+            {
+              "depth": 4,
+              "ms": 68.64393400000017,
+              "nodes": 5097,
+              "score": -100
+            },
+            {
+              "depth": 5,
+              "ms": 223.67138099999966,
+              "nodes": 24180,
+              "score": 100
+            }
+          ]
+        },
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1201.3179380000001,
+          "visitedNodes": 125696,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.135052000000087,
+              "nodes": 23,
+              "score": 0
+            },
+            {
+              "depth": 2,
+              "ms": 0.4327220000000125,
+              "nodes": 66,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 4.06442799999968,
+              "nodes": 631,
+              "score": 100
+            },
+            {
+              "depth": 4,
+              "ms": 46.007406000000174,
+              "nodes": 5097,
+              "score": -100
+            },
+            {
+              "depth": 5,
+              "ms": 220.11581400000023,
+              "nodes": 24180,
+              "score": 100
+            }
+          ]
+        },
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1201.6921970000003,
+          "visitedNodes": 117760,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.16588000000047032,
+              "nodes": 23,
+              "score": 0
+            },
+            {
+              "depth": 2,
+              "ms": 0.4485629999999219,
+              "nodes": 66,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 4.488027999999758,
+              "nodes": 631,
+              "score": 100
+            },
+            {
+              "depth": 4,
+              "ms": 38.61759600000005,
+              "nodes": 5097,
+              "score": -100
+            },
+            {
+              "depth": 5,
+              "ms": 249.33802699999978,
+              "nodes": 24180,
+              "score": 100
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Crowded middlegame",
+      "fen": "r2q1rk1/pp2bppp/2n1pn2/2pp4/2PP4/2N1PN2/PP2BPPP/R2Q1RK1",
+      "board": [
+        -4,
+        0,
+        0,
+        -6,
+        0,
+        -4,
+        -7,
+        0,
+        -1,
+        -1,
+        0,
+        0,
+        -3,
+        -1,
+        -1,
+        -1,
+        0,
+        0,
+        -2,
+        0,
+        -1,
+        -2,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        1,
+        2,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        3,
+        1,
+        1,
+        1,
+        4,
+        0,
+        0,
+        6,
+        0,
+        4,
+        7,
+        0
+      ],
+      "pieces": 30,
+      "legalMoves": 40,
+      "generation": {
+        "medianMicroseconds": 10.832969995667286,
+        "medianLegalMovesPerSecond": 3692431.532257382,
+        "samples": [
+          {
+            "microsecondsPerPosition": 9.339341697761174,
+            "legalMovesPerSecond": 4282957.117800796
+          },
+          {
+            "microsecondsPerPosition": 10.6480393282313,
+            "legalMovesPerSecond": 3756560.1297083325
+          },
+          {
+            "microsecondsPerPosition": 10.832969995667286,
+            "legalMovesPerSecond": 3692431.532257382
+          },
+          {
+            "microsecondsPerPosition": 10.896525696864204,
+            "legalMovesPerSecond": 3670894.844171402
+          },
+          {
+            "microsecondsPerPosition": 11.00326669595784,
+            "legalMovesPerSecond": 3635284.0574785303
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 40,
+          "nodes": 41,
+          "medianMs": 0.022340999999869382,
+          "trials": [
+            {
+              "leaves": 40,
+              "nodes": 41,
+              "ms": 0.03925799999979063
+            },
+            {
+              "leaves": 40,
+              "nodes": 41,
+              "ms": 0.022340999999869382
+            },
+            {
+              "leaves": 40,
+              "nodes": 41,
+              "ms": 0.018951000000015483
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 1596,
+          "nodes": 1637,
+          "medianMs": 0.767507999999907,
+          "trials": [
+            {
+              "leaves": 1596,
+              "nodes": 1637,
+              "ms": 0.767507999999907
+            },
+            {
+              "leaves": 1596,
+              "nodes": 1637,
+              "ms": 0.8846010000006572
+            },
+            {
+              "leaves": 1596,
+              "nodes": 1637,
+              "ms": 0.5114039999998568
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 64899,
+          "nodes": 66536,
+          "medianMs": 21.921880999999303,
+          "trials": [
+            {
+              "leaves": 64899,
+              "nodes": 66536,
+              "ms": 21.921880999999303
+            },
+            {
+              "leaves": 64899,
+              "nodes": 66536,
+              "ms": 17.108100999999806
+            },
+            {
+              "leaves": 64899,
+              "nodes": 66536,
+              "ms": 23.915813000000526
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": true,
+          "leaves": 2626804,
+          "nodes": 2693340,
+          "medianMs": 816.9340260000008,
+          "trials": [
+            {
+              "leaves": 2626804,
+              "nodes": 2693340,
+              "ms": 829.7074210000001
+            },
+            {
+              "leaves": 2626804,
+              "nodes": 2693340,
+              "ms": 816.9340260000008
+            },
+            {
+              "leaves": 2626804,
+              "nodes": 2693340,
+              "ms": 806.2532379999993
+            }
+          ]
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1200.8725880000002,
+          "visitedNodes": 99840,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.3949740000007296,
+              "nodes": 41,
+              "score": 100
+            },
+            {
+              "depth": 2,
+              "ms": 1.3989419999998063,
+              "nodes": 120,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 31.422474000000875,
+              "nodes": 3269,
+              "score": 200
+            },
+            {
+              "depth": 4,
+              "ms": 69.19784700000127,
+              "nodes": 5107,
+              "score": 0
+            },
+            {
+              "depth": 5,
+              "ms": 975.578234999999,
+              "nodes": 80212,
+              "score": 200
+            }
+          ]
+        },
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1202.1803529999997,
+          "visitedNodes": 103168,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.6077809999987949,
+              "nodes": 41,
+              "score": 100
+            },
+            {
+              "depth": 2,
+              "ms": 1.8434140000008483,
+              "nodes": 120,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 38.675130000001445,
+              "nodes": 3269,
+              "score": 200
+            },
+            {
+              "depth": 4,
+              "ms": 54.47773900000175,
+              "nodes": 5107,
+              "score": 0
+            },
+            {
+              "depth": 5,
+              "ms": 945.7594709999994,
+              "nodes": 80212,
+              "score": 200
+            }
+          ]
+        },
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1206.4163149999986,
+          "visitedNodes": 103168,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 1.8387199999997392,
+              "nodes": 41,
+              "score": 100
+            },
+            {
+              "depth": 2,
+              "ms": 2.6639699999996083,
+              "nodes": 120,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 36.370631000001595,
+              "nodes": 3269,
+              "score": 200
+            },
+            {
+              "depth": 4,
+              "ms": 55.36325199999919,
+              "nodes": 5107,
+              "score": 0
+            },
+            {
+              "depth": 5,
+              "ms": 944.5608219999995,
+              "nodes": 80212,
+              "score": 200
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Open middlegame",
+      "fen": "r3k2r/1p3p2/2n3p1/3q4/3Q4/2N3P1/1P3P2/R3K2R",
+      "board": [
+        -4,
+        0,
+        0,
+        0,
+        -7,
+        0,
+        0,
+        -4,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        -2,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        -6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        4
+      ],
+      "pieces": 16,
+      "legalMoves": 59,
+      "generation": {
+        "medianMicroseconds": 16.066828362944204,
+        "medianLegalMovesPerSecond": 3672162.2131767394,
+        "samples": [
+          {
+            "microsecondsPerPosition": 13.246908236228727,
+            "legalMovesPerSecond": 4453869.45752685
+          },
+          {
+            "microsecondsPerPosition": 13.927192083333214,
+            "legalMovesPerSecond": 4236316.958003745
+          },
+          {
+            "microsecondsPerPosition": 16.066828362944204,
+            "legalMovesPerSecond": 3672162.2131767394
+          },
+          {
+            "microsecondsPerPosition": 17.50297274305568,
+            "legalMovesPerSecond": 3370855.9606486447
+          },
+          {
+            "microsecondsPerPosition": 18.192769440407126,
+            "legalMovesPerSecond": 3243046.6506631915
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 59,
+          "nodes": 60,
+          "medianMs": 0.012541999998575193,
+          "trials": [
+            {
+              "leaves": 59,
+              "nodes": 60,
+              "ms": 0.015064000001075328
+            },
+            {
+              "leaves": 59,
+              "nodes": 60,
+              "ms": 0.01205400000071677
+            },
+            {
+              "leaves": 59,
+              "nodes": 60,
+              "ms": 0.012541999998575193
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 3147,
+          "nodes": 3207,
+          "medianMs": 0.6638400000010733,
+          "trials": [
+            {
+              "leaves": 3147,
+              "nodes": 3207,
+              "ms": 0.6638400000010733
+            },
+            {
+              "leaves": 3147,
+              "nodes": 3207,
+              "ms": 0.6504899999999907
+            },
+            {
+              "leaves": 3147,
+              "nodes": 3207,
+              "ms": 0.7409000000006927
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 157181,
+          "nodes": 160388,
+          "medianMs": 65.00633000000016,
+          "trials": [
+            {
+              "leaves": 157181,
+              "nodes": 160388,
+              "ms": 65.00633000000016
+            },
+            {
+              "leaves": 157181,
+              "nodes": 160388,
+              "ms": 123.55981999999858
+            },
+            {
+              "leaves": 157181,
+              "nodes": 160388,
+              "ms": 61.610022000000754
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": false,
+          "limitMs": 900
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1200.9012789999997,
+          "visitedNodes": 64512,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 1.1609630000002653,
+              "nodes": 60,
+              "score": 800
+            },
+            {
+              "depth": 2,
+              "ms": 5.521592999999484,
+              "nodes": 159,
+              "score": 500
+            },
+            {
+              "depth": 3,
+              "ms": 50.54078800000025,
+              "nodes": 2126,
+              "score": 1300
+            },
+            {
+              "depth": 4,
+              "ms": 88.7155189999994,
+              "nodes": 4657,
+              "score": 500
+            },
+            {
+              "depth": 5,
+              "ms": 678.7876129999986,
+              "nodes": 34983,
+              "score": 1000
+            }
+          ]
+        },
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1205.833915000001,
+          "visitedNodes": 68352,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.9592099999990751,
+              "nodes": 60,
+              "score": 800
+            },
+            {
+              "depth": 2,
+              "ms": 5.321998999999778,
+              "nodes": 159,
+              "score": 500
+            },
+            {
+              "depth": 3,
+              "ms": 39.989934999999605,
+              "nodes": 2126,
+              "score": 1300
+            },
+            {
+              "depth": 4,
+              "ms": 78.13780600000064,
+              "nodes": 4657,
+              "score": 500
+            },
+            {
+              "depth": 5,
+              "ms": 653.8229539999993,
+              "nodes": 34983,
+              "score": 1000
+            }
+          ]
+        },
+        {
+          "completedDepth": 5,
+          "elapsedMs": 1202.028325000003,
+          "visitedNodes": 49152,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 1.8243489999986195,
+              "nodes": 60,
+              "score": 800
+            },
+            {
+              "depth": 2,
+              "ms": 2.775312000001577,
+              "nodes": 159,
+              "score": 500
+            },
+            {
+              "depth": 3,
+              "ms": 39.71001199999955,
+              "nodes": 2126,
+              "score": 1300
+            },
+            {
+              "depth": 4,
+              "ms": 79.85139699999854,
+              "nodes": 4657,
+              "score": 500
+            },
+            {
+              "depth": 5,
+              "ms": 962.0242430000035,
+              "nodes": 34983,
+              "score": 1000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sparse queens and rooks",
+      "fen": "4k2r/8/8/3q4/8/3Q4/8/R3K3",
+      "board": [
+        0,
+        0,
+        0,
+        0,
+        -7,
+        0,
+        0,
+        -4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0
+      ],
+      "pieces": 6,
+      "legalMoves": 34,
+      "generation": {
+        "medianMicroseconds": 10.235211640752947,
+        "medianLegalMovesPerSecond": 3321865.84834496,
+        "samples": [
+          {
+            "microsecondsPerPosition": 10.235211640752947,
+            "legalMovesPerSecond": 3321865.84834496
+          },
+          {
+            "microsecondsPerPosition": 17.381750173611483,
+            "legalMovesPerSecond": 1956074.598955973
+          },
+          {
+            "microsecondsPerPosition": 10.46273317307696,
+            "legalMovesPerSecond": 3249628.8911858983
+          },
+          {
+            "microsecondsPerPosition": 9.746787091121277,
+            "legalMovesPerSecond": 3488328.9931481015
+          },
+          {
+            "microsecondsPerPosition": 9.859818513407268,
+            "legalMovesPerSecond": 3448339.333403266
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 34,
+          "nodes": 35,
+          "medianMs": 0.012582999999722233,
+          "trials": [
+            {
+              "leaves": 34,
+              "nodes": 35,
+              "ms": 0.02312499999970896
+            },
+            {
+              "leaves": 34,
+              "nodes": 35,
+              "ms": 0.012582999999722233
+            },
+            {
+              "leaves": 34,
+              "nodes": 35,
+              "ms": 0.011436000000685453
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 1089,
+          "nodes": 1124,
+          "medianMs": 0.38723899999968125,
+          "trials": [
+            {
+              "leaves": 1089,
+              "nodes": 1124,
+              "ms": 0.4253069999977015
+            },
+            {
+              "leaves": 1089,
+              "nodes": 1124,
+              "ms": 0.38723899999968125
+            },
+            {
+              "leaves": 1089,
+              "nodes": 1124,
+              "ms": 0.3785280000010971
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 31363,
+          "nodes": 32487,
+          "medianMs": 14.033622999999352,
+          "trials": [
+            {
+              "leaves": 31363,
+              "nodes": 32487,
+              "ms": 10.922118000002229
+            },
+            {
+              "leaves": 31363,
+              "nodes": 32487,
+              "ms": 14.245410999999876
+            },
+            {
+              "leaves": 31363,
+              "nodes": 32487,
+              "ms": 14.033622999999352
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": true,
+          "leaves": 943248,
+          "nodes": 975735,
+          "medianMs": 356.4385360000015,
+          "trials": [
+            {
+              "leaves": 943248,
+              "nodes": 975735,
+              "ms": 363.3450780000021
+            },
+            {
+              "leaves": 943248,
+              "nodes": 975735,
+              "ms": 355.7554170000003
+            },
+            {
+              "leaves": 943248,
+              "nodes": 975735,
+              "ms": 356.4385360000015
+            }
+          ]
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 6,
+          "elapsedMs": 1200.2932479999981,
+          "visitedNodes": 162304,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.3944599999995262,
+              "nodes": 35,
+              "score": 800
+            },
+            {
+              "depth": 2,
+              "ms": 0.6380539999991015,
+              "nodes": 80,
+              "score": 800
+            },
+            {
+              "depth": 3,
+              "ms": 5.206569000001764,
+              "nodes": 554,
+              "score": 800
+            },
+            {
+              "depth": 4,
+              "ms": 12.064378999999462,
+              "nodes": 1179,
+              "score": 300
+            },
+            {
+              "depth": 5,
+              "ms": 159.6755349999985,
+              "nodes": 14818,
+              "score": 800
+            },
+            {
+              "depth": 6,
+              "ms": 282.15395799999897,
+              "nodes": 27688,
+              "score": 300
+            }
+          ]
+        },
+        {
+          "completedDepth": 6,
+          "elapsedMs": 1201.3608380000005,
+          "visitedNodes": 139520,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.31408400000145775,
+              "nodes": 35,
+              "score": 800
+            },
+            {
+              "depth": 2,
+              "ms": 0.6551399999989371,
+              "nodes": 80,
+              "score": 800
+            },
+            {
+              "depth": 3,
+              "ms": 5.239568000000872,
+              "nodes": 554,
+              "score": 800
+            },
+            {
+              "depth": 4,
+              "ms": 12.575963000002957,
+              "nodes": 1179,
+              "score": 300
+            },
+            {
+              "depth": 5,
+              "ms": 175.880548000001,
+              "nodes": 14818,
+              "score": 800
+            },
+            {
+              "depth": 6,
+              "ms": 324.6366739999976,
+              "nodes": 27688,
+              "score": 300
+            }
+          ]
+        },
+        {
+          "completedDepth": 6,
+          "elapsedMs": 1200.510537000002,
+          "visitedNodes": 141312,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.32726000000184285,
+              "nodes": 35,
+              "score": 800
+            },
+            {
+              "depth": 2,
+              "ms": 0.8374709999989136,
+              "nodes": 80,
+              "score": 800
+            },
+            {
+              "depth": 3,
+              "ms": 5.96491099999912,
+              "nodes": 554,
+              "score": 800
+            },
+            {
+              "depth": 4,
+              "ms": 15.28177499999947,
+              "nodes": 1179,
+              "score": 300
+            },
+            {
+              "depth": 5,
+              "ms": 168.3518120000008,
+              "nodes": 14818,
+              "score": 800
+            },
+            {
+              "depth": 6,
+              "ms": 297.71875699999873,
+              "nodes": 27688,
+              "score": 300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pawn endgame",
+      "fen": "7k/5p2/8/8/8/8/2P5/K7",
+      "board": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pieces": 4,
+      "legalMoves": 5,
+      "generation": {
+        "medianMicroseconds": 2.044240499346157,
+        "medianLegalMovesPerSecond": 2445896.166130762,
+        "samples": [
+          {
+            "microsecondsPerPosition": 2.044240499346157,
+            "legalMovesPerSecond": 2445896.166130762
+          },
+          {
+            "microsecondsPerPosition": 2.1414288926001417,
+            "legalMovesPerSecond": 2334889.5764308833
+          },
+          {
+            "microsecondsPerPosition": 2.0280369078520497,
+            "legalMovesPerSecond": 2465438.3658607276
+          },
+          {
+            "microsecondsPerPosition": 2.1349811304645216,
+            "legalMovesPerSecond": 2341941.073227246
+          },
+          {
+            "microsecondsPerPosition": 2.0095106075216695,
+            "legalMovesPerSecond": 2488168.0053266813
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 5,
+          "nodes": 6,
+          "medianMs": 0.003951999999117106,
+          "trials": [
+            {
+              "leaves": 5,
+              "nodes": 6,
+              "ms": 0.0062800000014249235
+            },
+            {
+              "leaves": 5,
+              "nodes": 6,
+              "ms": 0.003951999999117106
+            },
+            {
+              "leaves": 5,
+              "nodes": 6,
+              "ms": 0.0021679999990737997
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 25,
+          "nodes": 31,
+          "medianMs": 0.011706999997841194,
+          "trials": [
+            {
+              "leaves": 25,
+              "nodes": 31,
+              "ms": 0.017145000001619337
+            },
+            {
+              "leaves": 25,
+              "nodes": 31,
+              "ms": 0.011377999999240274
+            },
+            {
+              "leaves": 25,
+              "nodes": 31,
+              "ms": 0.011706999997841194
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 160,
+          "nodes": 191,
+          "medianMs": 0.06607200000144076,
+          "trials": [
+            {
+              "leaves": 160,
+              "nodes": 191,
+              "ms": 0.07556399999884889
+            },
+            {
+              "leaves": 160,
+              "nodes": 191,
+              "ms": 0.06505199999810429
+            },
+            {
+              "leaves": 160,
+              "nodes": 191,
+              "ms": 0.06607200000144076
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": true,
+          "leaves": 1024,
+          "nodes": 1215,
+          "medianMs": 0.3989870000004885,
+          "trials": [
+            {
+              "leaves": 1024,
+              "nodes": 1215,
+              "ms": 0.4143839999996999
+            },
+            {
+              "leaves": 1024,
+              "nodes": 1215,
+              "ms": 0.3989870000004885
+            },
+            {
+              "leaves": 1024,
+              "nodes": 1215,
+              "ms": 0.3978769999994256
+            }
+          ]
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 7,
+          "elapsedMs": 10.720671999999468,
+          "visitedNodes": 4019,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.018336000000999775,
+              "nodes": 6,
+              "score": 0
+            },
+            {
+              "depth": 2,
+              "ms": 0.0327450000004319,
+              "nodes": 15,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 0.12311800000315998,
+              "nodes": 51,
+              "score": 0
+            },
+            {
+              "depth": 4,
+              "ms": 0.3338149999981397,
+              "nodes": 114,
+              "score": 0
+            },
+            {
+              "depth": 5,
+              "ms": 0.842172999997274,
+              "nodes": 366,
+              "score": 0
+            },
+            {
+              "depth": 6,
+              "ms": 1.903944000001502,
+              "nodes": 807,
+              "score": 0
+            },
+            {
+              "depth": 7,
+              "ms": 7.417970000002242,
+              "nodes": 2660,
+              "score": 0
+            }
+          ]
+        },
+        {
+          "completedDepth": 7,
+          "elapsedMs": 13.038131000001158,
+          "visitedNodes": 4019,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.014685000001918525,
+              "nodes": 6,
+              "score": 0
+            },
+            {
+              "depth": 2,
+              "ms": 0.03545799999847077,
+              "nodes": 15,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 0.1164600000010978,
+              "nodes": 51,
+              "score": 0
+            },
+            {
+              "depth": 4,
+              "ms": 0.2582509999992908,
+              "nodes": 114,
+              "score": 0
+            },
+            {
+              "depth": 5,
+              "ms": 0.8368310000005295,
+              "nodes": 366,
+              "score": 0
+            },
+            {
+              "depth": 6,
+              "ms": 5.091963000002579,
+              "nodes": 807,
+              "score": 0
+            },
+            {
+              "depth": 7,
+              "ms": 6.637860000002547,
+              "nodes": 2660,
+              "score": 0
+            }
+          ]
+        },
+        {
+          "completedDepth": 7,
+          "elapsedMs": 8.983800999998493,
+          "visitedNodes": 4019,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.013641999998071697,
+              "nodes": 6,
+              "score": 0
+            },
+            {
+              "depth": 2,
+              "ms": 0.032871999999770196,
+              "nodes": 15,
+              "score": 0
+            },
+            {
+              "depth": 3,
+              "ms": 0.12452299999858951,
+              "nodes": 51,
+              "score": 0
+            },
+            {
+              "depth": 4,
+              "ms": 0.25601299999834737,
+              "nodes": 114,
+              "score": 0
+            },
+            {
+              "depth": 5,
+              "ms": 0.8283470000023954,
+              "nodes": 366,
+              "score": 0
+            },
+            {
+              "depth": 6,
+              "ms": 1.9349629999996978,
+              "nodes": 807,
+              "score": 0
+            },
+            {
+              "depth": 7,
+              "ms": 5.767739000002621,
+              "nodes": 2660,
+              "score": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Promotion race",
+      "fen": "7k/2P5/8/8/8/8/5p2/K7",
+      "board": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -7,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pieces": 4,
+      "legalMoves": 11,
+      "generation": {
+        "medianMicroseconds": 2.267144813202725,
+        "medianLegalMovesPerSecond": 4851917.678986126,
+        "samples": [
+          {
+            "microsecondsPerPosition": 2.267144813202725,
+            "legalMovesPerSecond": 4851917.678986126
+          },
+          {
+            "microsecondsPerPosition": 2.2250314836240572,
+            "legalMovesPerSecond": 4943750.270932601
+          },
+          {
+            "microsecondsPerPosition": 2.3468253331456848,
+            "legalMovesPerSecond": 4687183.082882269
+          },
+          {
+            "microsecondsPerPosition": 2.255004622113958,
+            "legalMovesPerSecond": 4878038.781884193
+          },
+          {
+            "microsecondsPerPosition": 2.2940405733944824,
+            "legalMovesPerSecond": 4795032.88981648
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 11,
+          "nodes": 12,
+          "medianMs": 0.00957399999970221,
+          "trials": [
+            {
+              "leaves": 11,
+              "nodes": 12,
+              "ms": 0.2581019999997807
+            },
+            {
+              "leaves": 11,
+              "nodes": 12,
+              "ms": 0.00957399999970221
+            },
+            {
+              "leaves": 11,
+              "nodes": 12,
+              "ms": 0.005548000000999309
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 85,
+          "nodes": 97,
+          "medianMs": 0.0838739999999234,
+          "trials": [
+            {
+              "leaves": 85,
+              "nodes": 97,
+              "ms": 0.08867000000100234
+            },
+            {
+              "leaves": 85,
+              "nodes": 97,
+              "ms": 0.057132000001729466
+            },
+            {
+              "leaves": 85,
+              "nodes": 97,
+              "ms": 0.0838739999999234
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 821,
+          "nodes": 918,
+          "medianMs": 0.4128820000005362,
+          "trials": [
+            {
+              "leaves": 821,
+              "nodes": 918,
+              "ms": 0.6299489999983052
+            },
+            {
+              "leaves": 821,
+              "nodes": 918,
+              "ms": 0.4128820000005362
+            },
+            {
+              "leaves": 821,
+              "nodes": 918,
+              "ms": 0.37411100000099395
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": true,
+          "leaves": 8902,
+          "nodes": 9820,
+          "medianMs": 8.853815000002214,
+          "trials": [
+            {
+              "leaves": 8902,
+              "nodes": 9820,
+              "ms": 8.853815000002214
+            },
+            {
+              "leaves": 8902,
+              "nodes": 9820,
+              "ms": 9.033476000000519
+            },
+            {
+              "leaves": 8902,
+              "nodes": 9820,
+              "ms": 4.3677370000004885
+            }
+          ]
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 7,
+          "elapsedMs": 147.4918800000014,
+          "visitedNodes": 23050,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.10188500000003842,
+              "nodes": 12,
+              "score": 700
+            },
+            {
+              "depth": 2,
+              "ms": 0.14327100000082282,
+              "nodes": 24,
+              "score": 700
+            },
+            {
+              "depth": 3,
+              "ms": 0.5435400000023947,
+              "nodes": 135,
+              "score": 700
+            },
+            {
+              "depth": 4,
+              "ms": 1.3925269999999728,
+              "nodes": 254,
+              "score": 700
+            },
+            {
+              "depth": 5,
+              "ms": 8.58628200000021,
+              "nodes": 1572,
+              "score": 800
+            },
+            {
+              "depth": 6,
+              "ms": 21.34954199999993,
+              "nodes": 3102,
+              "score": 800
+            },
+            {
+              "depth": 7,
+              "ms": 115.24250000000029,
+              "nodes": 17951,
+              "score": 800
+            }
+          ]
+        },
+        {
+          "completedDepth": 7,
+          "elapsedMs": 138.758765999999,
+          "visitedNodes": 23050,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.04232799999954295,
+              "nodes": 12,
+              "score": 700
+            },
+            {
+              "depth": 2,
+              "ms": 0.11422400000083144,
+              "nodes": 24,
+              "score": 700
+            },
+            {
+              "depth": 3,
+              "ms": 0.7404410000017378,
+              "nodes": 135,
+              "score": 700
+            },
+            {
+              "depth": 4,
+              "ms": 1.1750319999991916,
+              "nodes": 254,
+              "score": 700
+            },
+            {
+              "depth": 5,
+              "ms": 11.754847000000154,
+              "nodes": 1572,
+              "score": 800
+            },
+            {
+              "depth": 6,
+              "ms": 16.884503000001132,
+              "nodes": 3102,
+              "score": 800
+            },
+            {
+              "depth": 7,
+              "ms": 107.96639900000082,
+              "nodes": 17951,
+              "score": 800
+            }
+          ]
+        },
+        {
+          "completedDepth": 7,
+          "elapsedMs": 140.89656900000045,
+          "visitedNodes": 23050,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.2547859999976936,
+              "nodes": 12,
+              "score": 700
+            },
+            {
+              "depth": 2,
+              "ms": 0.08692900000096415,
+              "nodes": 24,
+              "score": 700
+            },
+            {
+              "depth": 3,
+              "ms": 0.4660050000020419,
+              "nodes": 135,
+              "score": 700
+            },
+            {
+              "depth": 4,
+              "ms": 1.0980600000002596,
+              "nodes": 254,
+              "score": 700
+            },
+            {
+              "depth": 5,
+              "ms": 11.039695999999822,
+              "nodes": 1572,
+              "score": 800
+            },
+            {
+              "depth": 6,
+              "ms": 17.513017999997828,
+              "nodes": 3102,
+              "score": 800
+            },
+            {
+              "depth": 7,
+              "ms": 110.27314099999785,
+              "nodes": 17951,
+              "score": 800
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rotated rook endgame",
+      "fen": null,
+      "board": [
+        -5,
+        0,
+        0,
+        0,
+        -7,
+        0,
+        0,
+        -4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        5
+      ],
+      "pieces": 6,
+      "legalMoves": 24,
+      "generation": {
+        "medianMicroseconds": 8.79118829113936,
+        "medianLegalMovesPerSecond": 2730006.366055156,
+        "samples": [
+          {
+            "microsecondsPerPosition": 7.751214374225506,
+            "legalMovesPerSecond": 3096289.0253436007
+          },
+          {
+            "microsecondsPerPosition": 7.880088554785914,
+            "legalMovesPerSecond": 3045651.052414097
+          },
+          {
+            "microsecondsPerPosition": 8.91702781740386,
+            "legalMovesPerSecond": 2691479.772347224
+          },
+          {
+            "microsecondsPerPosition": 8.79118829113936,
+            "legalMovesPerSecond": 2730006.366055156
+          },
+          {
+            "microsecondsPerPosition": 8.855939270538316,
+            "legalMovesPerSecond": 2710045.6842384306
+          }
+        ]
+      },
+      "perft": [
+        {
+          "depth": 1,
+          "completed": true,
+          "leaves": 24,
+          "nodes": 25,
+          "medianMs": 0.012006999997538514,
+          "trials": [
+            {
+              "leaves": 24,
+              "nodes": 25,
+              "ms": 0.015492999998969026
+            },
+            {
+              "leaves": 24,
+              "nodes": 25,
+              "ms": 0.012006999997538514
+            },
+            {
+              "leaves": 24,
+              "nodes": 25,
+              "ms": 0.011764999999286374
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "completed": true,
+          "leaves": 484,
+          "nodes": 509,
+          "medianMs": 0.26396200000090175,
+          "trials": [
+            {
+              "leaves": 484,
+              "nodes": 509,
+              "ms": 0.26396200000090175
+            },
+            {
+              "leaves": 484,
+              "nodes": 509,
+              "ms": 0.2738069999977597
+            },
+            {
+              "leaves": 484,
+              "nodes": 509,
+              "ms": 0.2503289999986009
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "completed": true,
+          "leaves": 11489,
+          "nodes": 11998,
+          "medianMs": 9.867599999997765,
+          "trials": [
+            {
+              "leaves": 11489,
+              "nodes": 11998,
+              "ms": 10.924786999999924
+            },
+            {
+              "leaves": 11489,
+              "nodes": 11998,
+              "ms": 6.803573000001052
+            },
+            {
+              "leaves": 11489,
+              "nodes": 11998,
+              "ms": 9.867599999997765
+            }
+          ]
+        },
+        {
+          "depth": 4,
+          "completed": true,
+          "leaves": 255348,
+          "nodes": 267346,
+          "medianMs": 136.73122800000056,
+          "trials": [
+            {
+              "leaves": 255348,
+              "nodes": 267346,
+              "ms": 120.90689800000109
+            },
+            {
+              "leaves": 255348,
+              "nodes": 267346,
+              "ms": 136.73122800000056
+            },
+            {
+              "leaves": 255348,
+              "nodes": 267346,
+              "ms": 140.17835999999807
+            }
+          ]
+        }
+      ],
+      "alphaBeta": [
+        {
+          "completedDepth": 6,
+          "elapsedMs": 1200.586983000001,
+          "visitedNodes": 123904,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.18813299999965238,
+              "nodes": 25,
+              "score": 500
+            },
+            {
+              "depth": 2,
+              "ms": 0.3791160000000673,
+              "nodes": 51,
+              "score": 500
+            },
+            {
+              "depth": 3,
+              "ms": 3.702301000001171,
+              "nodes": 489,
+              "score": 1000
+            },
+            {
+              "depth": 4,
+              "ms": 10.206394000000728,
+              "nodes": 938,
+              "score": 1000
+            },
+            {
+              "depth": 5,
+              "ms": 105.67629699999816,
+              "nodes": 8293,
+              "score": 1000
+            },
+            {
+              "depth": 6,
+              "ms": 153.0598420000024,
+              "nodes": 15715,
+              "score": 1000
+            }
+          ]
+        },
+        {
+          "completedDepth": 6,
+          "elapsedMs": 1204.0492640000011,
+          "visitedNodes": 139264,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.38341399999990244,
+              "nodes": 25,
+              "score": 500
+            },
+            {
+              "depth": 2,
+              "ms": 0.9116520000025048,
+              "nodes": 51,
+              "score": 500
+            },
+            {
+              "depth": 3,
+              "ms": 8.782580999999482,
+              "nodes": 489,
+              "score": 1000
+            },
+            {
+              "depth": 4,
+              "ms": 11.412838000000193,
+              "nodes": 938,
+              "score": 1000
+            },
+            {
+              "depth": 5,
+              "ms": 110.61013299999831,
+              "nodes": 8293,
+              "score": 1000
+            },
+            {
+              "depth": 6,
+              "ms": 120.09243799999967,
+              "nodes": 15715,
+              "score": 1000
+            }
+          ]
+        },
+        {
+          "completedDepth": 6,
+          "elapsedMs": 1201.8283749999973,
+          "visitedNodes": 129024,
+          "depths": [
+            {
+              "depth": 1,
+              "ms": 0.36090600000170525,
+              "nodes": 25,
+              "score": 500
+            },
+            {
+              "depth": 2,
+              "ms": 0.35717400000066846,
+              "nodes": 51,
+              "score": 500
+            },
+            {
+              "depth": 3,
+              "ms": 3.323275000002468,
+              "nodes": 489,
+              "score": 1000
+            },
+            {
+              "depth": 4,
+              "ms": 6.147069999999076,
+              "nodes": 938,
+              "score": 1000
+            },
+            {
+              "depth": 5,
+              "ms": 87.95993799999997,
+              "nodes": 8293,
+              "score": 1000
+            },
+            {
+              "depth": 6,
+              "ms": 137.1294259999995,
+              "nodes": 15715,
+              "score": 1000
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

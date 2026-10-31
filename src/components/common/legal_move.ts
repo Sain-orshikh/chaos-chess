@@ -1,12 +1,35 @@
 import { offsetsS, offsetsD } from "./types";
-import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections } from "./pieces";
+import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections, promotionPieces } from "./pieces";
 import type { BasicMove, Board, Color } from "./types";
 import { findKing, isKingSafe } from "./king_safety";
 import { makeMove } from "./apply_move";
 
-export default function LegalMoveGenerate(board: Board, from: [number, number]) {
-    const [row, col] = from
-    const piece = board[row * 8 + col]
+export type UndoInformation = {
+    movingPiece: number;
+    capturedPiece: number;
+    jumpedPiece: number;
+};
+
+/** Save affected square contents before makeMove changes them. */
+export function saveUndoInformation(board: Board, move: BasicMove): UndoInformation {
+    return {
+        movingPiece: board[move.from],
+        capturedPiece: board[move.to],
+        jumpedPiece: move.kind === "ch" ? board[(move.from + move.to) / 2] : 0,
+    };
+}
+
+export function unmakeMove(board: Board, move: BasicMove, undo: UndoInformation): void {
+    board[move.from] = undo.movingPiece;
+    board[move.to] = undo.capturedPiece;
+    if (move.kind === "ch") board[(move.from + move.to) / 2] = undo.jumpedPiece;
+}
+
+/** Generate legal moves from a flat square index (a8 = 0, h1 = 63). */
+export default function LegalMoveGenerate(board: Board, from: number) {
+    const row = Math.floor(from / 8)
+    const col = from % 8
+    const piece = board[from]
     const moves: BasicMove[] = []
 
     if (!piece) return moves
@@ -18,7 +41,7 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
     const enemyKingPos = findKing(board, -kingId)
     const definition = pieceDefinition(piece)
     if (!definition) throw new Error(`Unknown piece code: ${piece}`)
-    const origin = row * 8 + col
+    const origin = from
 
 
     function genStraight(range: number) {
@@ -177,7 +200,17 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
         moves.push({ from: origin, to: origin, kind: "rotate", piece: definition.rotatesTo });
     }
 
-    return moves.filter((move) => {
+    // A promotion choice is part of the move, not a second turn.
+    const candidates = Math.abs(piece) === pieceIds.pawn
+        ? moves.flatMap((move): BasicMove[] => {
+            if (move.kind !== "rotate" && Math.floor(move.to / 8) === (color === "white" ? 0 : 7)) {
+                return promotionPieces.map(promotion => ({ ...move, promotion }));
+            }
+            return [move];
+        })
+        : moves;
+
+    return candidates.filter((move) => {
         const toRow = Math.floor(move.to / 8);
         const toCol = move.to % 8;
         if (move.kind !== "rotate") {
@@ -191,25 +224,14 @@ export default function LegalMoveGenerate(board: Board, from: [number, number]) 
             }
         }
 
-        const movingPiece = board[move.from];
-        const capturedPiece = board[move.to];
-        const checkeredPiece = move.kind === "ch" ? board[(move.from + move.to) / 2] : 0
-
-        function unmakeMove(board: Board, move: BasicMove){
-            board[move.from] = movingPiece
-            board[move.to] = capturedPiece
-            if (move.kind === "ch"){
-                board[(move.from + move.to) / 2] = checkeredPiece
-            }
-        }
+        const undo = saveUndoInformation(board, move);
 
         const nextKingPos = piece === kingId ? move.to : kingPos;
-        // Each candidate currently creates a full board copy before its safety check.
         makeMove(board, move);
         try {
             return isKingSafe(board, color, nextKingPos);
         } finally {
-            unmakeMove(board, move);
+            unmakeMove(board, move, undo);
         }
     })
 

@@ -20,18 +20,68 @@ function load(name) {
     return loadedModule.exports;
 }
 
-const { makePiece, pieceDefinitions, pieceIds, pieceColor, pieceName } = load('pieces');
+const { makePiece, pieceDefinitions, pieceIds, pieceColor, pieceName, pieceValue, MATE_SCORE } = load('pieces');
 const { parseFen } = load('fen_parcer');
-const { applyMove } = load('apply_move');
+const { applyMove, makeMove } = load('apply_move');
 const { findKing, isKingSafe } = load('king_safety');
 const generate = load('legal_move').default;
-const { createGame, gameReducer, getGameStatus } = load('game_state');
+const { Engine, createSearchStats } = load('engine');
+const { saveUndoInformation, unmakeMove } = load('legal_move');
+const { createGame, gameReducer, getGameStatus, gameResultScore } = load('game_state');
 
 function position(...pieces) {
     const board = Array(64).fill(0);
     for (const [row, col, piece] of pieces) board[row * 8 + col] = piece;
     return board;
 }
+
+test('shared undo records independently restore nested captures, jumps, and rotations', () => {
+    const board = position([7, 4, makePiece('king', 'white')], [0, 4, makePiece('king', 'black')],
+        [7, 0, makePiece('rook', 'white')], [6, 0, makePiece('pawn', 'black')],
+        [0, 7, makePiece('rook', 'black')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('pawn', 'black')]);
+    const moves = [
+        { from: 56, to: 48, kind: 'c' },
+        { from: 7, to: 15, kind: 'm' },
+        { from: 42, to: 28, kind: 'ch' },
+        { from: 48, to: 48, kind: 'rotate', piece: 'diagonalrook' },
+    ];
+    const stack = [];
+    for (const move of moves) {
+        const before = board.slice();
+        const undo = saveUndoInformation(board, move);
+        makeMove(board, move);
+        assert.notDeepEqual(board, before);
+        stack.push({ move, undo, before });
+    }
+    while (stack.length) {
+        const { move, undo, before } = stack.pop();
+        unmakeMove(board, move, undo);
+        assert.deepEqual(board, before);
+    }
+});
+
+test('material and terminal scores consistently use White\'s perspective', () => {
+    assert.equal(pieceValue(0), 0);
+    for (const [name, definition] of Object.entries(pieceDefinitions)) {
+        assert.ok(name === 'king' ? definition.value === 0 : definition.value > 0);
+        assert.equal(pieceValue(makePiece(name, 'white')), definition.value);
+        assert.equal(pieceValue(makePiece(name, 'black')), definition.value === 0 ? 0 : -definition.value);
+    }
+    assert.equal(pieceValue(makePiece('king', 'white')), 0);
+    assert.equal(pieceValue(makePiece('king', 'black')), 0);
+    assert.equal(pieceDefinitions.rook.value, pieceDefinitions.diagonalrook.value);
+    const materialBound = 62 * Math.max(...Object.entries(pieceDefinitions).filter(([name]) => name !== 'king').map(([, piece]) => piece.value));
+    for (const loser of ['white', 'black']) {
+        const winner = loser === 'white' ? 'black' : 'white';
+        const board = position([0, 0, makePiece('king', loser)], [0, 2, makePiece('rook', winner)], [1, 2, makePiece('rook', winner)], [7, 7, makePiece('king', winner)]);
+        const score = gameResultScore(getGameStatus(board, loser));
+        assert.equal(score, winner === 'white' ? MATE_SCORE : -MATE_SCORE);
+        assert.ok(Math.abs(score) > materialBound);
+    }
+    assert.equal(gameResultScore({ kind: 'stalemate' }), 0);
+    assert.equal(gameResultScore({ kind: 'playing' }), null);
+    assert.equal(gameResultScore({ kind: 'check' }), null);
+});
 
 test('known king squares avoid scans and must match the resulting board', () => {
     const board = position([7, 4, makePiece('king', 'white')], [0, 4, makePiece('king', 'black')]);
@@ -56,7 +106,7 @@ test('move generation locates each king once, regardless of candidate count', ()
             searches++;
             return Array.prototype.indexOf.apply(this, args);
         };
-        assert.ok(generate(board, [4, 3]).length > 10);
+        assert.ok(generate(board, 35).length > 10);
         // One lookup for each king, with no further lookups for candidate moves.
         assert.equal(searches, 2);
     }
@@ -122,7 +172,7 @@ test('missing king is unsafe; all edge squares are checked without wrapping', ()
 test('a pinned rook can stay on the ray or capture its attacker, but cannot leave the ray', () => {
     const board = position([7, 4, makePiece('king', 'white')], [6, 4, makePiece('rook', 'white')], [0, 4, makePiece('rook', 'black')]);
     const snapshot = structuredClone(board);
-    const moves = generate(board, [6, 4]);
+    const moves = generate(board, 52);
     assert.ok(moves.some((m) => m.to === 4 && m.kind === 'c'));
     assert.ok(moves.some((m) => m.to === 44 && m.kind === 'm'));
     assert.ok(moves.every((m) => m.to % 8 === 4));
@@ -131,15 +181,15 @@ test('a pinned rook can stay on the ray or capture its attacker, but cannot leav
 
 test('a move must resolve an existing check, including by blocking it', () => {
     const board = position([7, 4, makePiece('king', 'white')], [6, 0, makePiece('rook', 'white')], [0, 4, makePiece('rook', 'black')]);
-    assert.deepEqual(generate(board, [6, 0]), [{ from: 48, to: 52, kind: 'm' }]);
+    assert.deepEqual(generate(board, 48), [{ from: 48, to: 52, kind: 'm' }]);
 });
 
 test('king moves are checked after vacating the origin and after captures', () => {
     const board = position([4, 4, makePiece('king', 'white')], [4, 0, makePiece('rook', 'black')], [3, 4, makePiece('pawn', 'black')], [0, 4, makePiece('rook', 'black')]);
-    const moves = generate(board, [4, 4]);
+    const moves = generate(board, 36);
     assert.ok(!moves.some((m) => m.to === 37)); // Origin previously blocked this ray.
     assert.ok(!moves.some((m) => m.to === 28)); // Capturing exposes the protecting rook.
-    const capture = generate(position([4, 4, makePiece('king', 'white')], [3, 4, makePiece('pawn', 'black')]), [4, 4]);
+    const capture = generate(position([4, 4, makePiece('king', 'white')], [3, 4, makePiece('pawn', 'black')]), 36);
     assert.ok(capture.some((m) => m.to === 28 && m.kind === 'c'));
 });
 
@@ -147,40 +197,40 @@ test('pinned enemies still attack and kings cannot become adjacent or be capture
     const board = position([4, 4, makePiece('king', 'white')], [3, 3, makePiece('knight', 'black')], [0, 3, makePiece('king', 'black')], [7, 3, makePiece('rook', 'white')]);
     assert.equal(isKingSafe(board, 'white'), false);
     const kings = position([4, 4, makePiece('king', 'white')], [2, 4, makePiece('king', 'black')]);
-    assert.ok(!generate(kings, [4, 4]).some((m) => m.to === 28));
+    assert.ok(!generate(kings, 36).some((m) => m.to === 28));
     const capture = position([7, 7, makePiece('king', 'white')], [4, 4, makePiece('rook', 'white')], [4, 0, makePiece('king', 'black')]);
-    assert.ok(!generate(capture, [4, 4]).some((m) => m.to === 32));
+    assert.ok(!generate(capture, 36).some((m) => m.to === 32));
 });
 
 test('checkers capture removes the jumped piece before checking for exposed attacks', () => {
     const board = position([4, 7, makePiece('king', 'white')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('pawn', 'black')], [4, 0, makePiece('rook', 'black')]);
-    assert.ok(!generate(board, [5, 2]).some((m) => m.to === 28 && m.kind === 'ch'));
+    assert.ok(!generate(board, 42).some((m) => m.to === 28 && m.kind === 'ch'));
     board[4 * 8 + 0] = 0;
-    assert.ok(generate(board, [5, 2]).some((m) => m.to === 28 && m.kind === 'ch'));
+    assert.ok(generate(board, 42).some((m) => m.to === 28 && m.kind === 'ch'));
 });
 
 test('checkers capture can resolve check, but cannot capture the enemy king', () => {
     const board = position([4, 7, makePiece('king', 'white')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('rook', 'black')]);
-    assert.ok(generate(board, [5, 2]).some((m) => m.to === 28 && m.kind === 'ch'));
+    assert.ok(generate(board, 42).some((m) => m.to === 28 && m.kind === 'ch'));
     board[4 * 8 + 3] = makePiece('king', 'black');
-    assert.ok(!generate(board, [5, 2]).some((m) => m.kind === 'ch'));
+    assert.ok(!generate(board, 42).some((m) => m.kind === 'ch'));
 });
 
 test('moving into a checkers landing square can stop its threat', () => {
     const board = position([4, 4, makePiece('king', 'white')], [3, 3, makePiece('bishop', 'black')], [5, 7, makePiece('rook', 'white')]);
     assert.equal(isKingSafe(board, 'white'), false);
-    assert.ok(generate(board, [5, 7]).some((m) => m.to === 45));
+    assert.ok(generate(board, 47).some((m) => m.to === 45));
 });
 
 test('rotation is simulated without removing the rook and cannot ignore check', () => {
     const board = position([7, 4, makePiece('king', 'white')], [6, 4, makePiece('rook', 'white')], [0, 4, makePiece('rook', 'black')]);
     const snapshot = structuredClone(board);
-    assert.ok(generate(board, [6, 4]).some((m) => m.kind === 'rotate' && m.piece === 'diagonalrook'));
+    assert.ok(generate(board, 52).some((m) => m.kind === 'rotate' && m.piece === 'diagonalrook'));
     board[6 * 8 + 4] = makePiece('diagonalrook', 'white');
-    assert.ok(generate(board, [6, 4]).some((m) => m.kind === 'rotate' && m.piece === 'rook'));
+    assert.ok(generate(board, 52).some((m) => m.kind === 'rotate' && m.piece === 'rook'));
     board[6 * 8 + 4] = 0;
     board[6 * 8 + 0] = makePiece('rook', 'white');
-    assert.ok(!generate(board, [6, 0]).some((m) => m.kind === 'rotate'));
+    assert.ok(!generate(board, 48).some((m) => m.kind === 'rotate'));
     assert.equal(snapshot[6 * 8 + 4], makePiece('rook', 'white'));
 });
 
@@ -308,7 +358,7 @@ test('a legal rook rotation prevents stalemate even when no piece can move', () 
     board[0 * 8 + 0] = makePiece('king', 'white');
     board[7 * 8 + 7] = makePiece('king', 'black');
     board[3 * 8 + 3] = makePiece('rook', 'white');
-    assert.deepEqual(generate(board, [3, 3]), [{ from: 27, to: 27, kind: 'rotate', piece: 'diagonalrook' }]);
+    assert.deepEqual(generate(board, 27), [{ from: 27, to: 27, kind: 'rotate', piece: 'diagonalrook' }]);
     assert.deepEqual(getGameStatus(board, 'white'), { kind: 'playing' });
     board[3 * 8 + 3] = makePiece('pawn', 'white');
     assert.deepEqual(getGameStatus(board, 'white'), { kind: 'stalemate' });
@@ -339,7 +389,7 @@ test('bishops of either color can jump allies in all four directions without cap
         for (const dr of [-1, 1]) for (const dc of [-1, 1]) {
             const board = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, makePiece('bishop', color)], [4 + dr, 4 + dc, makePiece('pawn', color)]);
             const toRow = 4 + dr * 2, toCol = 4 + dc * 2;
-            const move = generate(board, [4, 4]).find((m) => m.to === toRow * 8 + toCol);
+            const move = generate(board, 36).find((m) => m.to === toRow * 8 + toCol);
             assert.equal(move?.kind, 'm');
             const next = click(click(createGame(board, color), 4, 4), toRow, toCol);
             assert.equal(next.board[4 * 8 + 4], 0);
@@ -355,19 +405,19 @@ test('bishops of either color can jump allies in all four directions without cap
 test('allied jumps require an empty on-board landing square and cannot jump empty squares', () => {
     for (const blocker of [makePiece('pawn', 'white'), makePiece('pawn', 'black')]) {
         const board = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, makePiece('bishop', 'white')], [3, 3, makePiece('pawn', 'white')], [2, 2, blocker]);
-        assert.ok(!generate(board, [4, 4]).some((m) => m.to === 18));
+        assert.ok(!generate(board, 36).some((m) => m.to === 18));
     }
     const edge = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [1, 1, makePiece('bishop', 'white')], [0, 0, makePiece('pawn', 'white')]);
-    assert.ok(generate(edge, [1, 1]).every((m) => m.to >= 0 && m.to < 64));
+    assert.ok(generate(edge, 9).every((m) => m.to >= 0 && m.to < 64));
     const empty = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, makePiece('bishop', 'white')]);
-    assert.ok(!generate(empty, [4, 4]).some((m) => m.to === 18));
+    assert.ok(!generate(empty, 36).some((m) => m.to === 18));
 });
 
 test('allied jumps preserve king safety, including jumping over your own king', () => {
     const blocked = position([4, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [5, 2, makePiece('bishop', 'white')], [4, 3, makePiece('pawn', 'white')], [4, 0, makePiece('rook', 'black')]);
-    assert.ok(generate(blocked, [5, 2]).some((m) => m.to === 28 && m.kind === 'm'));
+    assert.ok(generate(blocked, 42).some((m) => m.to === 28 && m.kind === 'm'));
     const pinned = position([4, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 3, makePiece('bishop', 'white')], [3, 2, makePiece('pawn', 'white')], [4, 0, makePiece('rook', 'black')]);
-    assert.ok(!generate(pinned, [4, 3]).some((m) => m.to === 17));
+    assert.ok(!generate(pinned, 35).some((m) => m.to === 17));
     const kingJump = position([3, 3, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, makePiece('bishop', 'white')]);
     const next = click(click(createGame(kingJump), 4, 4), 2, 2);
     assert.equal(next.board[3 * 8 + 3], makePiece('king', 'white'));
@@ -386,7 +436,10 @@ for (const color of ['white', 'black']) {
             let state = createGame(board, color);
             state = gameReducer(state, { type: 'click', square: [row, capture ? 0 : 1] });
             state = gameReducer(state, { type: 'click', square: [endRow, 0] });
-            assert.deepEqual(state.pendingPromotion, { square: [endRow, 0], color });
+            assert.deepEqual(state.pendingPromotion.square, [endRow, 0]);
+            assert.equal(state.pendingPromotion.color, color);
+            assert.equal(state.pendingPromotion.boardBefore, board);
+            assert.equal(state.pendingPromotion.moves.length, 4);
             assert.equal(state.turn, color);
             assert.equal(state.board[endRow * 8 + 0], makePiece('pawn', color));
             assert.equal(state.selectedSquare, null);
@@ -398,7 +451,7 @@ for (const color of ['white', 'black']) {
                 assert.equal(promoted.board[endRow * 8 + 0], makePiece(piece, color));
                 assert.equal(promoted.pendingPromotion, null);
                 assert.equal(promoted.turn, enemy);
-                assert.deepEqual(promoted.lastMove, state.lastMove);
+                assert.deepEqual(promoted.lastMove, { ...state.lastMove, promotion: piece });
                 assert.equal(state.board[endRow * 8 + 0], makePiece('pawn', color), 'promotion must not mutate the pending board');
             }
             assert.equal(gameReducer(state, { type: 'restart', board }).pendingPromotion, null);
@@ -451,11 +504,11 @@ test('FEN creates signed numeric pieces and zero empty squares', () => {
 
 test('flat square indices preserve board edges without wrapping across ranks', () => {
     const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [0, 0, makePiece('rook', 'white')]);
-    const rookMoves = generate(board, [0, 0]).filter(move => move.kind !== 'rotate');
+    const rookMoves = generate(board, 0).filter(move => move.kind !== 'rotate');
     assert.ok(rookMoves.some(move => move.to === 6));
     assert.ok(rookMoves.some(move => move.to === 48));
     assert.ok(rookMoves.every(move => Math.floor(move.to / 8) === 0 || move.to % 8 === 0));
-    assert.deepEqual(generate(board, [7, 0]).map(move => move.to).sort((a, b) => a - b), [48, 49, 57]);
+    assert.deepEqual(generate(board, 56).map(move => move.to).sort((a, b) => a - b), [48, 49, 57]);
     assert.equal(board.length, 64);
 });
 
@@ -470,11 +523,11 @@ test('all registered forms have unique IDs, color round trips, and valid rotatio
             if (definition.rotatesTo) {
                 const board = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, code]);
                 const snapshot = structuredClone(board);
-                const move = generate(board, [4, 4]).find(m => m.kind === 'rotate');
+                const move = generate(board, 36).find(m => m.kind === 'rotate');
                 assert.equal(move.piece, definition.rotatesTo);
                 const rotated = applyMove(board, move);
                 assert.equal(rotated[4 * 8 + 4], makePiece(definition.rotatesTo, color));
-                const back = generate(rotated, [4, 4]).find(m => m.kind === 'rotate');
+                const back = generate(rotated, 36).find(m => m.kind === 'rotate');
                 assert.deepEqual(applyMove(rotated, back), board);
                 assert.deepEqual(board, snapshot);
             }
@@ -483,4 +536,101 @@ test('all registered forms have unique IDs, color round trips, and valid rotatio
             assert.ok(fs.existsSync(fileURLToPath(new URL(`../public/pieces/${color}-${definition.image}.svg`, import.meta.url))));
         }
     }
+});
+
+
+for (const color of ['white', 'black']) {
+    test(`${color} promotion moves include all four choices and undo captures exactly`, () => {
+        const enemy = color === 'white' ? 'black' : 'white';
+        const row = color === 'white' ? 1 : 6;
+        const finalRow = color === 'white' ? 0 : 7;
+        const board = position([color === 'white' ? 7 : 0, 7, makePiece('king', color)],
+            [finalRow, 7, makePiece('king', enemy)], [row, 2, makePiece('pawn', color)],
+            [finalRow, 2, makePiece('rook', enemy)]);
+        const before = board.slice();
+        const moves = generate(board, row * 8 + 2);
+        assert.equal(moves.length, 12); // Two quiet destinations and one capture, four choices each.
+        for (const col of [1, 2, 3]) {
+            const choices = moves.filter(move => move.to === finalRow * 8 + col);
+            assert.deepEqual(choices.map(move => move.promotion), ['queen', 'rook', 'bishop', 'knight']);
+            for (const move of choices) {
+                const undo = saveUndoInformation(board, move);
+                const originalMove = structuredClone(move);
+                makeMove(board, move);
+                assert.equal(board[move.to], makePiece(move.promotion, color));
+                assert.equal(board[move.from], 0);
+                unmakeMove(board, move, undo);
+                assert.deepEqual(board, before);
+                assert.deepEqual(move, originalMove);
+            }
+        }
+        assert.throws(() => makeMove(board, { from: row * 8 + 2, to: finalRow * 8 + 1, kind: 'm' }), /promotion/);
+        assert.deepEqual(board, before);
+    });
+
+    test(`${color} minimax looks past a poisoned capture and preserves the board`, () => {
+        const original = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')],
+            [7, 0, makePiece('rook', 'white')], [4, 0, makePiece('pawn', 'black')], [4, 1, makePiece('rook', 'black')]);
+        const board = color === 'white' ? original : original.toReversed().map(piece => -piece || 0);
+        const before = board.slice();
+        const poisonedDestination = color === 'white' ? 32 : 31;
+        assert.equal(Engine(board, color, 1).to, poisonedDestination);
+        assert.notEqual(Engine(board, color, 2).to, poisonedDestination);
+        assert.deepEqual(board, before);
+    });
+
+    test(`${color} minimax scores checkmate after promotion at the depth limit`, () => {
+        const original = position([2, 1, makePiece('king', 'white')], [2, 3, makePiece('knight', 'white')],
+            [1, 2, makePiece('pawn', 'white')], [0, 0, makePiece('king', 'black')]);
+        const board = color === 'white' ? original : original.toReversed().map(piece => -piece || 0);
+        const before = board.slice();
+        const move = Engine(board, color, 1);
+        assert.ok(move.promotion);
+        assert.deepEqual(getGameStatus(applyMove(board, move), color === 'white' ? 'black' : 'white'), { kind: 'checkmate', winner: color });
+        assert.deepEqual(board, before);
+    });
+}
+
+test('minimax considers underpromotion to avoid stalemate', () => {
+    const board = position([3, 1, makePiece('king', 'white')], [1, 0, makePiece('king', 'black')],
+        [0, 1, makePiece('rook', 'white')], [1, 2, makePiece('pawn', 'white')]);
+    const before = board.slice();
+    const choices = generate(board, 10);
+    const queen = choices.find(move => move.promotion === 'queen');
+    assert.deepEqual(getGameStatus(applyMove(board, queen), 'black'), { kind: 'stalemate' });
+    const move = Engine(board, 'white', 1);
+    assert.equal(move.promotion, 'bishop');
+    assert.notEqual(getGameStatus(applyMove(board, move), 'black').kind, 'stalemate');
+    assert.deepEqual(board, before);
+});
+
+test('minimax returns null for finished positions and rejects invalid depths', () => {
+    const mate = position([0, 0, makePiece('king', 'black')], [0, 2, makePiece('rook', 'white')],
+        [1, 2, makePiece('rook', 'white')], [7, 7, makePiece('king', 'white')]);
+    const stalemate = position([0, 0, makePiece('king', 'black')], [2, 1, makePiece('knight', 'white')], [7, 7, makePiece('king', 'white')]);
+    assert.equal(Engine(mate, 'black'), null);
+    assert.equal(Engine(stalemate, 'black'), null);
+    for (const depth of [0, -1, 1.5, NaN, Infinity]) assert.throws(() => Engine(mate, 'black', depth), RangeError);
+});
+
+
+test('search counters count leaves, edges, and cutoffs and reset between searches', () => {
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')]);
+    const stats = createSearchStats();
+    const move = Engine(board, 'white', 2, stats);
+    assert.deepEqual(Engine(board, 'white', 2), move);
+    assert.equal(stats.positionsVisited, 9);
+    assert.equal(stats.movesExplored, 8);
+    assert.equal(stats.positionsEvaluated, 5);
+    assert.equal(stats.materialEvaluations, 5);
+    assert.equal(stats.terminalPositions, 0);
+    assert.equal(stats.cutoffs, 2);
+    assert.equal(stats.movesSkipped, 4);
+    assert.ok(stats.generatedMoves > stats.movesExplored);
+    assert.ok(stats.elapsedMs >= 0);
+    Engine(board, 'white', 1, stats);
+    assert.equal(stats.positionsVisited, 4);
+    assert.equal(stats.positionsEvaluated, 3);
+    assert.equal(stats.cutoffs, 0);
+    assert.equal(stats.movesSkipped, 0);
 });
