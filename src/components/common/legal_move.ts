@@ -1,7 +1,7 @@
-import { offsetsS, offsetsD } from "./types";
-import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections, promotionPieces } from "./pieces";
-import type { BasicMove, Board, Color } from "./types";
-import { findKing, isKingSafe } from "./king_safety";
+import { offsetsS, offsetsD } from "../utils/types";
+import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections, promotionPieces } from "../utils/pieces";
+import type { BasicMove, Board, Color } from "../utils/types";
+import { findKing, isKingSafe } from "../utils/king_safety";
 import { makeMove } from "./apply_move";
 
 export type UndoInformation = {

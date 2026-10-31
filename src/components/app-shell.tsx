@@ -23,7 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return <AuthProvider><div className={`app-layout${mobileOpen ? " mobile-open" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>
     <Sidebar mobileOpen={mobileOpen} collapsed={collapsed} onClose={close} />
     <main className="app-main" inert={isMobile && mobileOpen}>
-      <header className="topbar"><button ref={toggle} className="icon-button" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded={isMobile ? mobileOpen : !collapsed} onClick={() => { if (matchMedia("(max-width: 950px)").matches) setMobileOpen(!mobileOpen); else setCollapsed(!collapsed); }}><Icon name="menu" /></button><div className="breadcrumb">Chaos Chess<span>/</span><strong>{pathname === "/encyclopedia" ? "Encyclopedia" : "Play bot"}</strong></div></header>
+      <header className="topbar"><button ref={toggle} className="icon-button" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded={isMobile ? mobileOpen : !collapsed} onClick={() => { if (matchMedia("(max-width: 950px)").matches) setMobileOpen(!mobileOpen); else setCollapsed(!collapsed); }}><Icon name="menu" /></button><div className="breadcrumb">Chaos Chess<span>/</span><strong>{pathname === "/engine-lab" ? "Engine lab" : pathname === "/encyclopedia" ? "Encyclopedia" : "Play bot"}</strong></div></header>
       <div className="page-content">{children}</div>
     </main>
   </div></AuthProvider>;

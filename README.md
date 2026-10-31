@@ -67,3 +67,12 @@ pnpm build
 The tests cover the custom engine, injection payloads, upload validation, rate limits, session validation, MongoDB connection reuse, shared counter races, and HTTP log redaction. UI checks cover desktop/mobile navigation, setup, local play, rook actions, and the Encyclopedia.
 
 Fonts are self-hosted Barlow and Barlow Condensed under the included Open Font License. The sidebar uses the bishop SVG and the lettering from the original logo concept. The standalone prototype remains in `design/`.
+
+
+### Engine lab
+
+Open `/engine-lab` (Explore → Engine lab) to preview preset or custom FEN positions and compare plain minimax, alpha-beta, and alpha-beta with move ordering. The browser measures all-side legal move generation separately, then searches depths 1 through the chosen maximum, using one trial or the median of three. Results include visited/evaluated positions, cutoffs, search time, and the chosen move; click a move to highlight it on the preview.
+
+Search runs in a Web Worker. Each trial has a time limit; Stop terminates the worker. Incomplete rows report partial counts and never claim a completed depth. FEN validation requires one king per side, legal king safety for the side that just moved, and no unpromoted back-rank pawns. Standard castling/en-passant fields are accepted but unused by Chaos Chess rules.
+
+Move ordering ranks captures and promotions at every searched node. Zobrist hashing is labeled as planned. Hashing will be shared by all methods when implemented. This page measures the existing engine and does not connect it to the local-match screen.

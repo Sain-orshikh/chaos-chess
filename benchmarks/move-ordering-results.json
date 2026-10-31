@@ -1,0 +1,218 @@
+[
+  {
+    "mode": "alpha-beta",
+    "depth": 1,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 39,
+      "positionsEvaluated": 38,
+      "materialEvaluations": 38,
+      "terminalPositions": 0,
+      "movesExplored": 38,
+      "generatedMoves": 1650,
+      "cutoffs": 0,
+      "movesSkipped": 0,
+      "elapsedMs": 5.382307999999966
+    },
+    "medianMs": 6.748491999999942,
+    "samplesMs": [
+      6.748491999999942,
+      8.455905999999914,
+      5.382307999999966
+    ],
+    "move": {
+      "from": 23,
+      "to": 15,
+      "kind": "c"
+    }
+  },
+  {
+    "mode": "alpha-beta",
+    "depth": 2,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 606,
+      "positionsEvaluated": 567,
+      "materialEvaluations": 567,
+      "terminalPositions": 0,
+      "movesExplored": 605,
+      "generatedMoves": 20117,
+      "cutoffs": 35,
+      "movesSkipped": 1045,
+      "elapsedMs": 21.83501000000001
+    },
+    "medianMs": 50.58015799999998,
+    "samplesMs": [
+      59.91488400000003,
+      50.58015799999998,
+      21.83501000000001
+    ],
+    "move": {
+      "from": 23,
+      "to": 31,
+      "kind": "m"
+    }
+  },
+  {
+    "mode": "alpha-beta",
+    "depth": 3,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 2592,
+      "positionsEvaluated": 2208,
+      "materialEvaluations": 2208,
+      "terminalPositions": 0,
+      "movesExplored": 2591,
+      "generatedMoves": 100173,
+      "cutoffs": 292,
+      "movesSkipped": 8993,
+      "elapsedMs": 35.00745200000006
+    },
+    "medianMs": 35.00745200000006,
+    "samplesMs": [
+      50.54836499999999,
+      34.989242000000104,
+      35.00745200000006
+    ],
+    "move": {
+      "from": 23,
+      "to": 22,
+      "kind": "m"
+    }
+  },
+  {
+    "mode": "alpha-beta",
+    "depth": 4,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 36400,
+      "positionsEvaluated": 34172,
+      "materialEvaluations": 34120,
+      "terminalPositions": 52,
+      "movesExplored": 36399,
+      "generatedMoves": 1288306,
+      "cutoffs": 1817,
+      "movesSkipped": 49577,
+      "elapsedMs": 844.5273629999997
+    },
+    "medianMs": 799.8399049999998,
+    "samplesMs": [
+      799.8399049999998,
+      713.1881510000001,
+      844.5273629999997
+    ],
+    "move": {
+      "from": 23,
+      "to": 31,
+      "kind": "m"
+    }
+  },
+  {
+    "mode": "alpha-beta-ordered",
+    "depth": 1,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 39,
+      "positionsEvaluated": 38,
+      "materialEvaluations": 38,
+      "terminalPositions": 0,
+      "movesExplored": 38,
+      "generatedMoves": 1650,
+      "cutoffs": 0,
+      "movesSkipped": 0,
+      "elapsedMs": 2.571657999999843
+    },
+    "medianMs": 2.571657999999843,
+    "samplesMs": [
+      2.875141999999869,
+      1.9484019999999873,
+      2.571657999999843
+    ],
+    "move": {
+      "from": 23,
+      "to": 15,
+      "kind": "c"
+    }
+  },
+  {
+    "mode": "alpha-beta-ordered",
+    "depth": 2,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 162,
+      "positionsEvaluated": 123,
+      "materialEvaluations": 123,
+      "terminalPositions": 0,
+      "movesExplored": 161,
+      "generatedMoves": 5487,
+      "cutoffs": 36,
+      "movesSkipped": 1489,
+      "elapsedMs": 9.792797999999948
+    },
+    "medianMs": 10.83721800000012,
+    "samplesMs": [
+      10.83721800000012,
+      11.609938000000056,
+      9.792797999999948
+    ],
+    "move": {
+      "from": 23,
+      "to": 31,
+      "kind": "m"
+    }
+  },
+  {
+    "mode": "alpha-beta-ordered",
+    "depth": 3,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 1424,
+      "positionsEvaluated": 1262,
+      "materialEvaluations": 1262,
+      "terminalPositions": 0,
+      "movesExplored": 1423,
+      "generatedMoves": 58026,
+      "cutoffs": 116,
+      "movesSkipped": 4105,
+      "elapsedMs": 20.55594599999995
+    },
+    "medianMs": 51.90171999999984,
+    "samplesMs": [
+      68.70396200000005,
+      51.90171999999984,
+      20.55594599999995
+    ],
+    "move": {
+      "from": 23,
+      "to": 22,
+      "kind": "m"
+    }
+  },
+  {
+    "mode": "alpha-beta-ordered",
+    "depth": 4,
+    "status": "complete",
+    "stats": {
+      "positionsVisited": 7105,
+      "positionsEvaluated": 5439,
+      "materialEvaluations": 5423,
+      "terminalPositions": 16,
+      "movesExplored": 7104,
+      "generatedMoves": 236709,
+      "cutoffs": 1477,
+      "movesSkipped": 59867,
+      "elapsedMs": 134.26949100000002
+    },
+    "medianMs": 132.57955399999992,
+    "samplesMs": [
+      121.18064400000003,
+      132.57955399999992,
+      134.26949100000002
+    ],
+    "move": {
+      "from": 23,
+      "to": 31,
+      "kind": "m"
+    }
+  }
+]

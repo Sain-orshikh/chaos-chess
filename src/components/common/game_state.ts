@@ -1,12 +1,12 @@
-import { MATE_SCORE, pieceColor, promotionPieces } from "./pieces";
+import { MATE_SCORE, pieceColor, promotionPieces } from "../utils/pieces";
 import { applyMove } from "./apply_move";
 import LegalMoveGenerate from "./legal_move";
-import { isKingSafe } from "./king_safety";
-import type { BasicMove, Board, Color, PromotionPiece } from "./types";
+import { isKingSafe } from "../utils/king_safety";
+import type { BasicMove, Board, Color, PromotionPiece } from "../utils/types";
 
 export type Square = [number, number];
-export { promotionPieces } from "./pieces";
-export type { PromotionPiece } from "./types";
+export { promotionPieces } from "../utils/pieces";
+export type { PromotionPiece } from "../utils/types";
 export type GameStatus =
     | { kind: "playing" | "check" }
     | { kind: "checkmate"; winner: Color }

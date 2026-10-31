@@ -6,7 +6,7 @@ import { useState } from "react";
 import Board from "./board";
 import Icon from "./icon";
 import { useAuth } from "./auth-provider";
-import type { Color } from "./common/types";
+import type { Color } from "./utils/types";
 
 const opponents = [
   { name: "Local 1v1", piece: "king", detail: "Play both sides", available: true },

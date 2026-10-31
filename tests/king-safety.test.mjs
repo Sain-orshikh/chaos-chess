@@ -6,26 +6,29 @@ import ts from 'typescript';
 
 // Load the project's TypeScript modules without changing the Next.js compiler setup.
 const modules = new Map();
-function load(name) {
-    if (modules.has(name)) return modules.get(name);
-    const source = fs.readFileSync(fileURLToPath(new URL(`../src/components/common/${name}.ts`, import.meta.url)), 'utf8');
+function load(name, base = new URL('../src/components/common/', import.meta.url)) {
+    const url = new URL(`${name}.ts`, base);
+    if (modules.has(url.href)) return modules.get(url.href);
+    const source = fs.readFileSync(fileURLToPath(url), 'utf8');
     const compiled = ts.transpileModule(source, {
-        compilerOptions: { module: ts.ModuleKind.CommonJS },
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017 },
     }).outputText;
     const loadedModule = { exports: {} };
     new Function('require', 'module', 'exports', compiled)(
-        (id) => load(id.replace('./', '')), loadedModule, loadedModule.exports,
+        id => load(id, new URL('.', url)), loadedModule, loadedModule.exports,
     );
-    modules.set(name, loadedModule.exports);
+    modules.set(url.href, loadedModule.exports);
     return loadedModule.exports;
 }
 
-const { makePiece, pieceDefinitions, pieceIds, pieceColor, pieceName, pieceValue, MATE_SCORE } = load('pieces');
-const { parseFen } = load('fen_parcer');
+const { makePiece, pieceDefinitions, pieceIds, pieceColor, pieceName, pieceValue, MATE_SCORE } = load('../utils/pieces');
+const { parseFen } = load('../utils/fen_parcer');
 const { applyMove, makeMove } = load('apply_move');
-const { findKing, isKingSafe } = load('king_safety');
+const { findKing, isKingSafe } = load('../utils/king_safety');
 const generate = load('legal_move').default;
-const { Engine, createSearchStats } = load('engine');
+const { Engine, createSearchStats, SearchTimeoutError, movePriority } = load('engine');
+const { parseBenchmarkFen, benchmarkPositions } = load('benchmark_positions');
+const { runBenchmark } = load('benchmark');
 const { saveUndoInformation, unmakeMove } = load('legal_move');
 const { createGame, gameReducer, getGameStatus, gameResultScore } = load('game_state');
 
@@ -633,4 +636,131 @@ test('search counters count leaves, edges, and cutoffs and reset between searche
     assert.equal(stats.positionsEvaluated, 3);
     assert.equal(stats.cutoffs, 0);
     assert.equal(stats.movesSkipped, 0);
+});
+
+
+test('benchmark FEN validation accepts presets and rejects unsafe custom inputs', () => {
+    for (const preset of benchmarkPositions) assert.equal(parseBenchmarkFen(preset.fen).board.length, 64);
+    assert.equal(parseBenchmarkFen('7k/8/8/8/8/8/8/K7 b').turn, 'black');
+    for (const fen of [
+        '8/8/8/8/8/8/8/8 w',
+        '7k/8/8/8/8/8/8/K7 x',
+        '7k/8/8/8/8/8/8/KP6 w',
+        '8/8/8/8/8/8/1k6/K7 w',
+        '4k3/8/8/8/8/8/4R3/K7 w',
+        '7k/8/8/8/8/8/8/K7 w - - -1 1',
+        '7k/8/8/8/8/8/8/K7 w - - 0 0',
+    ]) assert.throws(() => parseBenchmarkFen(fen));
+    assert.equal(parseBenchmarkFen('4k3/8/8/8/8/8/4R3/K7 b - - 0 1').turn, 'black');
+});
+
+test('plain minimax and alpha-beta agree while pruning reduces evaluations', () => {
+    const board = parseFen('7k/8/8/8/8/8/8/K7');
+    const plain = createSearchStats(), pruned = createSearchStats();
+    assert.deepEqual(Engine(board, 'white', 2, plain, { mode: 'minimax' }), Engine(board, 'white', 2, pruned, { mode: 'alpha-beta' }));
+    assert.equal(plain.positionsEvaluated, 9);
+    assert.equal(pruned.positionsEvaluated, 5);
+    assert.equal(plain.cutoffs, 0);
+    assert.ok(pruned.cutoffs > 0);
+});
+
+test('search deadline unwinds every move and retains partial statistics', () => {
+    const board = parseFen(benchmarkPositions[0].fen), before = board.slice();
+    const stats = createSearchStats();
+    assert.throws(() => Engine(board, 'white', 8, stats, { mode: 'minimax', maxTimeMs: 0.000001 }), SearchTimeoutError);
+    assert.deepEqual(board, before);
+    assert.ok(stats.positionsVisited > 1);
+    assert.ok(stats.elapsedMs > 0);
+});
+
+test('benchmark runner emits generation measurements and complete comparisons', () => {
+    const messages = [];
+    runBenchmark({ fen: '7k/8/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000 }, message => messages.push(message));
+    assert.equal(messages[0].type, 'generation');
+    assert.equal(messages[0].legalMoves, 3);
+    assert.ok(messages[0].microseconds > 0);
+    const results = messages.filter(message => message.type === 'result').map(message => message.result);
+    assert.equal(results.length, 4);
+    assert.ok(results.every(result => result.status === 'complete' && result.medianMs !== null));
+    assert.equal(results.find(result => result.mode === 'minimax' && result.depth === 2).stats.positionsEvaluated, 9);
+    assert.equal(results.find(result => result.mode === 'alpha-beta' && result.depth === 2).stats.positionsEvaluated, 5);
+    assert.equal(messages.at(-1).type, 'done');
+});
+
+
+test('ordering ranks material magnitudes, promotions, jumps, and king attackers for both colors', () => {
+    for (const color of ['white', 'black']) {
+        const enemy = color === 'white' ? 'black' : 'white';
+        const board = position([4, 4, makePiece('pawn', color)], [3, 4, makePiece('queen', enemy)]);
+        const snapshot = board.slice();
+        const capture = { from: 36, to: 28, kind: 'c' };
+        const pawnCapture = movePriority(board, capture);
+        board[36] = makePiece('queen', color);
+        assert.ok(pawnCapture > movePriority(board, capture));
+        board[36] = makePiece('king', color);
+        assert.ok(pawnCapture > movePriority(board, capture));
+        board[36] = snapshot[36];
+        assert.equal(movePriority(board, { from: 36, to: 27, kind: 'm' }), 0);
+        assert.equal(movePriority(board, { from: 36, to: 36, kind: 'rotate', piece: 'diagonalrook' }), 0);
+        assert.deepEqual(board, snapshot);
+
+        const bishopBoard = position([5, 2, makePiece('bishop', color)], [4, 3, makePiece('queen', enemy)]);
+        assert.ok(movePriority(bishopBoard, { from: 42, to: 28, kind: 'ch' }) > 0);
+        bishopBoard[35] = makePiece('queen', color);
+        assert.equal(movePriority(bishopBoard, { from: 42, to: 28, kind: 'm' }), 0);
+
+        const row = color === 'white' ? 1 : 6, final = color === 'white' ? 0 : 7;
+        const pawnBoard = position([row, 2, makePiece('pawn', color)]);
+        const base = { from: row * 8 + 2, to: final * 8 + 1, kind: 'm' };
+        const queenPriority = movePriority(pawnBoard, { ...base, promotion: 'queen' });
+        const knightPriority = movePriority(pawnBoard, { ...base, promotion: 'knight' });
+        assert.ok(queenPriority > knightPriority && knightPriority > 0);
+        pawnBoard[base.to] = makePiece('rook', enemy);
+        assert.ok(movePriority(pawnBoard, { ...base, kind: 'c', promotion: 'queen' }) > queenPriority);
+    }
+    const white = position([4, 4, makePiece('pawn', 'white')], [3, 4, makePiece('queen', 'black')]);
+    const black = white.map(piece => -piece || 0);
+    assert.equal(movePriority(white, { from: 36, to: 28, kind: 'c' }), movePriority(black, { from: 36, to: 28, kind: 'c' }));
+});
+
+function referenceMinimax(board, turn, depth) {
+    const moves = board.flatMap((piece, square) => pieceColor(piece) === turn ? generate(board, square) : []);
+    if (!moves.length) return isKingSafe(board, turn) ? 0 : turn === 'white' ? -MATE_SCORE : MATE_SCORE;
+    if (depth === 0) return board.reduce((sum, piece) => sum + pieceValue(piece), 0);
+    const scores = moves.map(move => referenceMinimax(applyMove(board, move), turn === 'white' ? 'black' : 'white', depth - 1));
+    return turn === 'white' ? Math.max(...scores) : Math.min(...scores);
+}
+
+test('ordered alpha-beta agrees with copied-board minimax on presets for both sides', () => {
+    for (const preset of benchmarkPositions) {
+        const board = parseFen(preset.fen), before = board.slice();
+        for (const turn of ['white', 'black']) {
+            const expected = referenceMinimax(board, turn, 2);
+            for (const mode of ['minimax', 'alpha-beta', 'alpha-beta-ordered']) {
+                const move = Engine(board, turn, 2, undefined, { mode });
+                const actual = referenceMinimax(applyMove(board, move), turn === 'white' ? 'black' : 'white', 1);
+                assert.equal(actual, expected, `${preset.id}, ${turn}, ${mode}`);
+                assert.deepEqual(board, before);
+            }
+        }
+    }
+});
+
+test('ordering reduces explored positions in the seeded middlegame', () => {
+    const board = parseFen(benchmarkPositions[0].fen), before = board.slice();
+    const plainOrder = createSearchStats(), ordered = createSearchStats();
+    const originalMove = Engine(board, 'white', 3, plainOrder, { mode: 'alpha-beta' });
+    const orderedMove = Engine(board, 'white', 3, ordered, { mode: 'alpha-beta-ordered' });
+    assert.equal(referenceMinimax(applyMove(board, originalMove), 'black', 2), referenceMinimax(applyMove(board, orderedMove), 'black', 2));
+    assert.ok(ordered.positionsVisited < plainOrder.positionsVisited);
+    assert.deepEqual(board, before);
+});
+
+test('benchmark runner supports the ordered mode', () => {
+    const messages = [];
+    runBenchmark({ fen: benchmarkPositions[6].fen, modes: ['alpha-beta-ordered'], maxDepth: 1, repetitions: 1, timeLimitMs: 1000 }, message => messages.push(message));
+    const result = messages.find(message => message.type === 'result').result;
+    assert.equal(result.mode, 'alpha-beta-ordered');
+    assert.equal(result.status, 'complete');
+    assert.ok(result.move.promotion);
 });

@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Piece, { BoardPiece } from "./piece";
-import { pieceColor, pieceDefinition, pieceDefinitions } from "./common/pieces";
+import { pieceColor, pieceDefinition, pieceDefinitions } from "./utils/pieces";
 import Icon from "./icon";
 import GameResultModal from "./game-result-modal";
-import type { Color } from "./common/types";
-import { parseFen } from "./common/fen_parcer";
+import type { Color } from "./utils/types";
+import { parseFen } from "./utils/fen_parcer";
 import LegalMoveGenerate from "./common/legal_move";
 import { createGame, gameReducer, promotionPieces } from "./common/game_state";
 

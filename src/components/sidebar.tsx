@@ -72,6 +72,7 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <p className="nav-label section-gap">Explore</p>
       <nav className="nav" aria-label="Explore">
         <Link href="/encyclopedia" className={pathname === "/encyclopedia" ? "active" : ""} aria-current={pathname === "/encyclopedia" ? "page" : undefined} onClick={onClose}><Icon name="book" />Encyclopedia</Link>
+        <Link href="/engine-lab" className={pathname === "/engine-lab" ? "active" : ""} aria-current={pathname === "/engine-lab" ? "page" : undefined} onClick={onClose}><Icon name="rank" />Engine lab</Link>
         <button disabled><Icon name="trophy" />Leaderboard<span className="soon">Soon</span></button>
       </nav>
       <footer className="side-footer"><small><b>●</b> Early access<span>v.01</span></small><small>Chaos Chess © 2026</small></footer>

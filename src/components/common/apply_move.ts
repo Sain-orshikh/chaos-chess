@@ -1,5 +1,5 @@
-import { makePiece, pieceColor, pieceDefinition, pieceIds, promotionPieces } from "./pieces";
-import type { BasicMove, Board } from "./types";
+import { makePiece, pieceColor, pieceDefinition, pieceIds, promotionPieces } from "../utils/pieces";
+import type { BasicMove, Board } from "../utils/types";
 
 /** Apply an already validated move directly to the supplied board. */
 export function makeMove(board: Board, move: BasicMove): Board {

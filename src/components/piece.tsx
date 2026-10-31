@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { pieceColor, pieceDefinitions, pieceName } from "./common/pieces";
-import type { Color, PieceName } from "./common/types";
+import { pieceColor, pieceDefinitions, pieceName } from "./utils/pieces";
+import type { Color, PieceName } from "./utils/types";
 
 export default function Piece(type: PieceName, color: Color) {
     const definition = pieceDefinitions[type];

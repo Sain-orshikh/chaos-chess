@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Icon from "./icon";
 import Piece from "./piece";
-import type { Color } from "./common/types";
+import type { Color } from "./utils/types";
 import type { GameStatus } from "./common/game_state";
 
 type FinishedStatus = Extract<GameStatus, { kind: "checkmate" | "stalemate" }>;
