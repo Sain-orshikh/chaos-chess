@@ -14,6 +14,10 @@ export type SearchStats = {
     cutoffs: number;
     movesSkipped: number;
     elapsedMs: number;
+    quiescenceNodes: number;
+    quiescenceMoves: number;
+    maxQuiescencePlyReached: number;
+    quiescenceLimitHits: number;
 };
 
 export function createSearchStats(): SearchStats {
@@ -21,6 +25,7 @@ export function createSearchStats(): SearchStats {
         positionsVisited: 0, positionsEvaluated: 0, materialEvaluations: 0,
         terminalPositions: 0, movesExplored: 0, generatedMoves: 0,
         cutoffs: 0, movesSkipped: 0, elapsedMs: 0,
+        quiescenceNodes: 0, quiescenceMoves: 0, maxQuiescencePlyReached: 0, quiescenceLimitHits: 0,
     };
 }
 
@@ -29,11 +34,24 @@ export type SearchMode = typeof searchModes[number];
 export type SearchOptions = {
     mode?: SearchMode;
     maxTimeMs?: number;
+    quiescence?: boolean;
+    maxQuiescencePly?: number;
+    maxCheckEvasionPly?: number;
     onProgress?: (stats: SearchStats) => void;
 };
 
-export class SearchTimeoutError extends Error {
-    constructor() { super("Search time limit reached"); this.name = "SearchTimeoutError"; }
+export const DEFAULT_SEARCH_TIME_MS = 5000;
+export const DEFAULT_MAX_QUIESCENCE_PLY = 8;
+export const DEFAULT_MAX_CHECK_EVASION_PLY = 8;
+
+export class SearchLimitError extends Error {
+    constructor(public readonly reason: "time" | "quiescence", message: string) { super(message); this.name = "SearchLimitError"; }
+}
+export class SearchTimeoutError extends SearchLimitError {
+    constructor() { super("time", "Search time limit reached"); this.name = "SearchTimeoutError"; }
+}
+export class QuiescenceLimitError extends SearchLimitError {
+    constructor() { super("quiescence", "Quiescence limit reached while in check"); this.name = "QuiescenceLimitError"; }
 }
 
 function legalMoves(board: Board, turn: Color, stats?: SearchStats): BasicMove[] {
@@ -74,20 +92,30 @@ function orderMoves(board: Board, moves: BasicMove[], mode: SearchMode): BasicMo
         .map(entry => entry.move);
 }
 
-/** Alpha-beta with move ordering by default. Depth counts player actions; null means no legal move. */
+/** Depth counts normal player actions; quiescence extends tactical leaves. Limits abort incomplete searches. */
 export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats, options: SearchOptions = {}): BasicMove | null {
     if (!Number.isInteger(depth) || depth < 1) throw new RangeError("Search depth must be a positive integer");
-    if (options.maxTimeMs !== undefined && (!Number.isFinite(options.maxTimeMs) || options.maxTimeMs <= 0)) {
-        throw new RangeError("Search time limit must be positive");
+    const maxTimeMs = options.maxTimeMs ?? DEFAULT_SEARCH_TIME_MS;
+    if (!Number.isFinite(maxTimeMs) || maxTimeMs <= 0) throw new RangeError("Search time limit must be positive");
+    const maxQuiescencePly = options.maxQuiescencePly ?? DEFAULT_MAX_QUIESCENCE_PLY;
+    if (!Number.isInteger(maxQuiescencePly) || maxQuiescencePly < 0 || maxQuiescencePly > 32) {
+        throw new RangeError("Quiescence limit must be an integer from 0 to 32");
     }
+    const maxCheckEvasionPly = options.maxCheckEvasionPly ?? DEFAULT_MAX_CHECK_EVASION_PLY;
+    if (!Number.isInteger(maxCheckEvasionPly) || maxCheckEvasionPly < 0 || maxCheckEvasionPly > 16) {
+        throw new RangeError("Check-evasion allowance must be an integer from 0 to 16");
+    }
+    const hardQuiescenceLimit = maxQuiescencePly + maxCheckEvasionPly;
     const mode = options.mode ?? "alpha-beta-ordered";
     if (!searchModes.includes(mode)) throw new RangeError("Unknown search mode");
     const start = performance.now();
-    const deadline = options.maxTimeMs === undefined ? Infinity : start + options.maxTimeMs;
+    const deadline = start + maxTimeMs; // One deadline for normal search AND every quiescence branch.
     let checks = 0;
     let lastProgress = start;
-    function checkLimits() {
-        if ((++checks & 255) !== 0) return;
+    if (stats) { Object.assign(stats, createSearchStats()); stats.positionsVisited = 1; }
+
+    function checkLimits(force = false) {
+        if (!force && (++checks & 255) !== 0) return;
         const now = performance.now();
         if (stats) stats.elapsedMs = now - start;
         if (stats && options.onProgress && now - lastProgress >= 100) {
@@ -96,82 +124,102 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
         }
         if (now >= deadline) throw new SearchTimeoutError();
     }
-    if (stats) {
-        Object.assign(stats, createSearchStats());
-        stats.positionsVisited = 1; // Include the root; each explored move visits one more position.
+    function evaluate(): number {
+        if (stats) { stats.positionsEvaluated++; stats.materialEvaluations++; }
+        return value(board);
+    }
+    function terminalScore(turn: Color): number {
+        if (stats) { stats.positionsEvaluated++; stats.terminalPositions++; }
+        return isKingSafe(board, turn) ? 0 : turn === "white" ? -MATE_SCORE : MATE_SCORE;
+    }
+    function cutoff(alpha: number, beta: number, skipped: number): boolean {
+        if (mode === "minimax" || alpha < beta) return false;
+        if (stats && skipped > 0) { stats.cutoffs++; stats.movesSkipped += skipped; }
+        return true;
+    }
+    function afterMove(move: BasicMove, tactical: boolean, next: () => number): number {
+        const undo = saveUndoInformation(board, move);
+        makeMove(board, move);
+        if (stats) { stats.movesExplored++; if (tactical) stats.quiescenceMoves++; }
+        try { return next(); }
+        finally { unmakeMove(board, move, undo); }
     }
 
-    let alpha = -Infinity;
-    let beta = Infinity;
+    function quiescence(turn: Color, alpha: number, beta: number, ply: number, existingMoves?: BasicMove[]): number {
+        // The normal depth-limit position was already counted and generated by search.
+        if (stats) {
+            if (!existingMoves) stats.positionsVisited++;
+            stats.quiescenceNodes++;
+            stats.maxQuiescencePlyReached = Math.max(stats.maxQuiescencePlyReached, ply);
+        }
+        checkLimits();
+        const moves = existingMoves ?? legalMoves(board, turn, stats);
+        if (moves.length === 0) return terminalScore(turn);
+        const inCheck = !isKingSafe(board, turn);
+        const candidates = inCheck ? moves : moves.filter(move =>
+            move.kind === "c" || move.kind === "ch" || (move.kind !== "rotate" && move.promotion !== undefined));
+
+        if (ply >= maxQuiescencePly) {
+            if (inCheck || candidates.length > 0) { if (stats) stats.quiescenceLimitHits++; }
+            // Once the capture budget is spent, finish any forced check responses first.
+            if (!inCheck) return evaluate();
+            // Counterchecks are possible. Bound that chain too, without inventing a static score.
+            if (ply >= hardQuiescenceLimit) throw new QuiescenceLimitError();
+        }
+        let bestScore = turn === "white" ? -Infinity : Infinity;
+        if (!inCheck) {
+            bestScore = evaluate(); // Stand pat: captures are optional.
+            if (turn === "white") alpha = Math.max(alpha, bestScore);
+            else beta = Math.min(beta, bestScore);
+            if (cutoff(alpha, beta, candidates.length)) return bestScore;
+        }
+        const orderedMoves = orderMoves(board, candidates, mode);
+        const nextTurn = turn === "white" ? "black" : "white";
+        for (let index = 0; index < orderedMoves.length; index++) {
+            const score = afterMove(orderedMoves[index], true, () => quiescence(nextTurn, alpha, beta, ply + 1));
+            if (turn === "white") { bestScore = Math.max(bestScore, score); alpha = Math.max(alpha, bestScore); }
+            else { bestScore = Math.min(bestScore, score); beta = Math.min(beta, bestScore); }
+            if (cutoff(alpha, beta, orderedMoves.length - index - 1)) break;
+        }
+        return bestScore;
+    }
 
     function search(turn: Color, remainingDepth: number, alpha: number, beta: number): number {
         if (stats) stats.positionsVisited++;
         checkLimits();
         const moves = legalMoves(board, turn, stats);
-        // Detect mate even at the depth limit; both kings remain on the board.
-        if (moves.length === 0) {
-            if (stats) { stats.positionsEvaluated++; stats.terminalPositions++; }
-            return isKingSafe(board, turn) ? 0 : turn === "white" ? -MATE_SCORE : MATE_SCORE;
-        }
+        if (moves.length === 0) return terminalScore(turn);
         if (remainingDepth === 0) {
-            if (stats) { stats.positionsEvaluated++; stats.materialEvaluations++; }
-            return value(board);
+            return options.quiescence === false ? evaluate() : quiescence(turn, alpha, beta, 0, moves);
         }
-
         const orderedMoves = orderMoves(board, moves, mode);
+        const nextTurn = turn === "white" ? "black" : "white";
         let bestScore = turn === "white" ? -Infinity : Infinity;
         for (let index = 0; index < orderedMoves.length; index++) {
-            const move = orderedMoves[index];
-            const score = scoreMove(move, turn, remainingDepth, alpha, beta);
-            if (turn === "white") {
-                bestScore = Math.max(bestScore, score);
-                alpha = Math.max(alpha, bestScore);
-            } else {
-                bestScore = Math.min(bestScore, score);
-                beta = Math.min(beta, bestScore);
-            }
-
-            if (mode !== "minimax" && alpha >= beta) {
-                if (stats && index + 1 < moves.length) {
-                    stats.cutoffs++;
-                    stats.movesSkipped += moves.length - index - 1;
-                }
-                break;
-            }
+            const score = afterMove(orderedMoves[index], false, () => search(nextTurn, remainingDepth - 1, alpha, beta));
+            if (turn === "white") { bestScore = Math.max(bestScore, score); alpha = Math.max(alpha, bestScore); }
+            else { bestScore = Math.min(bestScore, score); beta = Math.min(beta, bestScore); }
+            if (cutoff(alpha, beta, orderedMoves.length - index - 1)) break;
         }
         return bestScore;
     }
 
-    function scoreMove(move: BasicMove, turn: Color, remainingDepth: number, alpha: number, beta: number): number {
-        const undo = saveUndoInformation(board, move);
-        makeMove(board, move);
-        if (stats) stats.movesExplored++;
-        try {
-            return search(turn === "white" ? "black" : "white", remainingDepth - 1, alpha, beta);
-        } finally {
-            unmakeMove(board, move, undo);
-        }
-    }
-
     try {
+        checkLimits(true);
+        let alpha = -Infinity, beta = Infinity;
         let bestMove: BasicMove | null = null;
         let bestScore = turn === "white" ? -Infinity : Infinity;
         const rootMoves = orderMoves(board, legalMoves(board, turn, stats), mode);
-        if (stats && rootMoves.length === 0) {
-            stats.positionsEvaluated++;
-            stats.terminalPositions++;
-        }
+        if (rootMoves.length === 0) terminalScore(turn);
         for (const move of rootMoves) {
-            const score = scoreMove(move, turn, depth, alpha, beta);
+            const score = afterMove(move, false, () => search(turn === "white" ? "black" : "white", depth - 1, alpha, beta));
+            checkLimits(true);
             if (bestMove === null || (turn === "white" ? score > bestScore : score < bestScore)) {
                 bestScore = score;
                 bestMove = move;
             }
-            if (turn === "white") {
-                alpha = Math.max(alpha, bestScore);
-            } else {
-                beta = Math.min(beta, bestScore);
-            }
+            if (turn === "white") alpha = Math.max(alpha, bestScore);
+            else beta = Math.min(beta, bestScore);
         }
         return bestMove;
     } finally {

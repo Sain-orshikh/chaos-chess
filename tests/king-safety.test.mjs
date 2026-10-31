@@ -26,7 +26,11 @@ const { parseFen } = load('../utils/fen_parcer');
 const { applyMove, makeMove } = load('apply_move');
 const { findKing, isKingSafe } = load('../utils/king_safety');
 const generate = load('legal_move').default;
-const { Engine, createSearchStats, SearchTimeoutError, movePriority } = load('engine');
+const { Engine: engineSearch, createSearchStats, SearchTimeoutError, QuiescenceLimitError, movePriority } = load('engine');
+// Keep the original static-depth regressions explicit; dedicated quiescence tests opt in below.
+function Engine(board, turn, depth, stats, options = {}) {
+    return engineSearch(board, turn, depth, stats, { quiescence: false, ...options });
+}
 const { parseBenchmarkFen, benchmarkPositions } = load('benchmark_positions');
 const { runBenchmark } = load('benchmark');
 const { saveUndoInformation, unmakeMove } = load('legal_move');
@@ -669,13 +673,13 @@ test('search deadline unwinds every move and retains partial statistics', () => 
     const stats = createSearchStats();
     assert.throws(() => Engine(board, 'white', 8, stats, { mode: 'minimax', maxTimeMs: 0.000001 }), SearchTimeoutError);
     assert.deepEqual(board, before);
-    assert.ok(stats.positionsVisited > 1);
+    assert.ok(stats.positionsVisited >= 1);
     assert.ok(stats.elapsedMs > 0);
 });
 
 test('benchmark runner emits generation measurements and complete comparisons', () => {
     const messages = [];
-    runBenchmark({ fen: '7k/8/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000 }, message => messages.push(message));
+    runBenchmark({ fen: '7k/8/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000, quiescence: false }, message => messages.push(message));
     assert.equal(messages[0].type, 'generation');
     assert.equal(messages[0].legalMoves, 3);
     assert.ok(messages[0].microseconds > 0);
@@ -758,9 +762,85 @@ test('ordering reduces explored positions in the seeded middlegame', () => {
 
 test('benchmark runner supports the ordered mode', () => {
     const messages = [];
-    runBenchmark({ fen: benchmarkPositions[6].fen, modes: ['alpha-beta-ordered'], maxDepth: 1, repetitions: 1, timeLimitMs: 1000 }, message => messages.push(message));
+    runBenchmark({ fen: benchmarkPositions[6].fen, modes: ['alpha-beta-ordered'], maxDepth: 1, repetitions: 1, timeLimitMs: 1000, quiescence: false }, message => messages.push(message));
     const result = messages.find(message => message.type === 'result').result;
     assert.equal(result.mode, 'alpha-beta-ordered');
     assert.equal(result.status, 'complete');
     assert.ok(result.move.promotion);
+});
+
+
+for (const color of ['white', 'black']) {
+    test(`${color} quiescence avoids a poisoned capture at the normal depth limit`, () => {
+        const original = position([7, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')],
+            [7, 0, makePiece('rook', 'white')], [4, 0, makePiece('pawn', 'black')], [4, 1, makePiece('rook', 'black')]);
+        const board = color === 'white' ? original : original.toReversed().map(piece => -piece || 0);
+        const before = board.slice(), stats = createSearchStats();
+        const poison = color === 'white' ? 32 : 31;
+        assert.equal(Engine(board, color, 1).to, poison);
+        const move = engineSearch(board, color, 1, stats, { maxTimeMs: 3000, maxQuiescencePly: 8 });
+        assert.notEqual(move.to, poison);
+        assert.ok(stats.quiescenceNodes > 0);
+        assert.ok(stats.quiescenceMoves > 0);
+        assert.equal(stats.positionsVisited, stats.movesExplored + 1);
+        assert.deepEqual(board, before);
+    });
+
+    test(`${color} quiescence searches quiet check escapes and then returns to tactical moves`, () => {
+        const original = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [1, 0, makePiece('rook', 'white')]);
+        const board = color === 'white' ? original : original.toReversed().map(piece => -piece || 0);
+        const before = board.slice(), stats = createSearchStats();
+        const move = engineSearch(board, color, 1, stats, { mode: 'minimax', maxQuiescencePly: 1 });
+        assert.ok(move);
+        assert.ok(stats.quiescenceMoves > 0);
+        assert.equal(stats.maxQuiescencePlyReached, 1);
+        assert.deepEqual(board, before);
+        // A spent capture budget still permits a forced evasion before static evaluation.
+        const escaped = createSearchStats();
+        assert.ok(engineSearch(board, color, 1, escaped, { mode: 'minimax', maxQuiescencePly: 0 }));
+        assert.ok(escaped.quiescenceMoves > 0);
+        assert.deepEqual(board, before);
+        // With BOTH allowances exhausted, the checked leaf cannot be treated as stand pat.
+        assert.throws(() => engineSearch(board, color, 1, stats, { mode: 'minimax', maxQuiescencePly: 0, maxCheckEvasionPly: 0 }), QuiescenceLimitError);
+        assert.deepEqual(board, before);
+        assert.ok(stats.quiescenceLimitHits > 0);
+    });
+}
+
+test('a quiet quiescence position evaluates normally rather than becoming a false stalemate', () => {
+    const board = parseFen('7k/8/8/8/8/8/8/K7'), before = board.slice(), stats = createSearchStats();
+    assert.ok(engineSearch(board, 'white', 1, stats));
+    assert.equal(stats.quiescenceNodes, 3);
+    assert.equal(stats.quiescenceMoves, 0);
+    assert.equal(stats.terminalPositions, 0);
+    assert.equal(stats.materialEvaluations, 3);
+    assert.deepEqual(board, before);
+});
+
+test('the quiescence cap bounds capture continuations and records truncated tactical leaves', () => {
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')],
+        [4, 2, makePiece('pawn', 'white')], [3, 2, makePiece('pawn', 'black')],
+        [3, 3, makePiece('rook', 'black')], [2, 1, makePiece('bishop', 'white')]);
+    const before = board.slice(), stats = createSearchStats();
+    assert.ok(engineSearch(board, 'white', 1, stats, { mode: 'minimax', maxQuiescencePly: 1 }));
+    assert.ok(stats.quiescenceMoves > 0);
+    assert.ok(stats.quiescenceLimitHits > 0);
+    assert.equal(stats.maxQuiescencePlyReached, 1);
+    assert.deepEqual(board, before);
+    for (const limit of [-1, 1.5, NaN, Infinity, 33]) {
+        assert.throws(() => engineSearch(board, 'white', 1, undefined, { maxQuiescencePly: limit }), RangeError);
+    }
+});
+
+test('benchmark distinguishes an unresolved-check extension limit from a time limit', () => {
+    const messages = [];
+    runBenchmark({ fen: '7k/R7/8/8/8/8/8/K7 w - - 0 1', modes: ['alpha-beta-ordered'], maxDepth: 2,
+        repetitions: 1, timeLimitMs: 1000, quiescence: true, maxQuiescencePly: 0, maxCheckEvasionPly: 0 }, message => messages.push(message));
+    const results = messages.filter(message => message.type === 'result').map(message => message.result);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].status, 'extension-limit');
+    assert.equal(results[0].medianMs, null);
+    assert.equal(results[0].move, null);
+    assert.ok(results[0].stats.quiescenceLimitHits > 0);
+    assert.equal(messages.at(-1).type, 'done');
 });

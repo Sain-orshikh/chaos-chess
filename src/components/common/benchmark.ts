@@ -1,4 +1,4 @@
-import { Engine, createSearchStats, SearchTimeoutError, searchModes } from "./engine";
+import { Engine, createSearchStats, SearchLimitError, DEFAULT_MAX_QUIESCENCE_PLY, DEFAULT_MAX_CHECK_EVASION_PLY, searchModes } from "./engine";
 import type { SearchMode, SearchStats } from "./engine";
 import LegalMoveGenerate from "./legal_move";
 import { parseBenchmarkFen } from "./benchmark_positions";
@@ -6,10 +6,10 @@ import { pieceColor } from "../utils/pieces";
 import type { BasicMove } from "../utils/types";
 
 export type BenchmarkRequest = {
-    fen: string; modes: SearchMode[]; maxDepth: number; repetitions: number; timeLimitMs: number;
+    fen: string; modes: SearchMode[]; maxDepth: number; repetitions: number; timeLimitMs: number; quiescence?: boolean; maxQuiescencePly?: number; maxCheckEvasionPly?: number;
 };
 export type BenchmarkResult = {
-    mode: SearchMode; depth: number; status: "complete" | "timed-out" | "stopped";
+    mode: SearchMode; depth: number; status: "complete" | "timed-out" | "extension-limit" | "stopped";
     stats: SearchStats; medianMs: number | null; samplesMs: number[]; move: BasicMove | null;
 };
 export type BenchmarkMessage =
@@ -27,6 +27,11 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
     if (![1, 3].includes(request.repetitions)) throw new Error("Choose one or three trials.");
     if (!Number.isFinite(request.timeLimitMs) || request.timeLimitMs < 100 || request.timeLimitMs > 10000) throw new Error("Invalid time limit.");
     if (!request.modes.length || request.modes.some(mode => !searchModes.includes(mode))) throw new Error("Choose an available search method.");
+    const quiescence = request.quiescence ?? true;
+    const maxQuiescencePly = request.maxQuiescencePly ?? DEFAULT_MAX_QUIESCENCE_PLY;
+    const maxCheckEvasionPly = request.maxCheckEvasionPly ?? DEFAULT_MAX_CHECK_EVASION_PLY;
+    if (!Number.isInteger(maxCheckEvasionPly) || maxCheckEvasionPly < 0 || maxCheckEvasionPly > 16) throw new Error("Invalid check-evasion allowance.");
+    if (typeof quiescence !== "boolean" || !Number.isInteger(maxQuiescencePly) || maxQuiescencePly < 0 || maxQuiescencePly > 32) throw new Error("Invalid quiescence settings.");
     function generateAll() {
         let count = 0;
         for (let square = 0; square < 64; square++) {
@@ -44,33 +49,33 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
     }
     emit({ type: "generation", microseconds: median(samples), legalMoves: generateAll() });
     for (const mode of [...new Set(request.modes)]) {
-        Engine(board, turn, 1, undefined, { mode }); // Untimed warmup.
+        Engine(board, turn, 1, undefined, { mode, quiescence: false }); // Untimed warmup.
         for (let depth = 1; depth <= request.maxDepth; depth++) {
             const samplesMs: number[] = [];
             let move: BasicMove | null = null;
             let lastStats = createSearchStats();
-            let timedOut = false;
+            let limitStatus: "timed-out" | "extension-limit" | null = null;
             for (let trial = 1; trial <= request.repetitions; trial++) {
                 const stats = createSearchStats();
                 emit({ type: "progress", mode, depth, trial, stats });
                 try {
                     move = Engine(board, turn, depth, stats, {
-                        mode, maxTimeMs: request.timeLimitMs,
+                        mode, maxTimeMs: request.timeLimitMs, quiescence, maxQuiescencePly, maxCheckEvasionPly,
                         onProgress: snapshot => emit({ type: "progress", mode, depth, trial, stats: snapshot }),
                     });
                     samplesMs.push(stats.elapsedMs);
                 } catch (error) {
-                    if (!(error instanceof SearchTimeoutError)) throw error;
-                    timedOut = true;
+                    if (!(error instanceof SearchLimitError)) throw error;
+                    limitStatus = error.reason === "time" ? "timed-out" : "extension-limit";
                 }
                 lastStats = stats;
-                if (timedOut) break;
+                if (limitStatus) break;
             }
             emit({ type: "result", result: {
-                mode, depth, status: timedOut ? "timed-out" : "complete", stats: lastStats,
-                medianMs: timedOut ? null : median(samplesMs), samplesMs, move: timedOut ? null : move,
+                mode, depth, status: limitStatus ?? "complete", stats: lastStats,
+                medianMs: limitStatus ? null : median(samplesMs), samplesMs, move: limitStatus ? null : move,
             } });
-            if (timedOut) break; // Continue with the next method; skip its deeper searches.
+            if (limitStatus) break; // Continue with the next method; skip its deeper searches.
         }
     }
     emit({ type: "done" });
