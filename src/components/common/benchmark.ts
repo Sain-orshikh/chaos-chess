@@ -27,7 +27,7 @@ function median(values: number[]): number { return [...values].sort((a, b) => a 
 export function runBenchmark(request: BenchmarkRequest, emit: (message: BenchmarkMessage) => void): void {
     const { board, turn } = parseBenchmarkFen(request.fen);
     const castling = { ...(request.castling ?? createCastlingState()) };
-    if (!Number.isInteger(request.maxDepth) || request.maxDepth < 1 || request.maxDepth > 8) throw new Error("Choose a depth from 1 to 8.");
+    if (!Number.isInteger(request.maxDepth) || request.maxDepth < 1 || request.maxDepth > 16) throw new Error("Choose a depth from 1 to 16.");
     if (![1, 3].includes(request.repetitions)) throw new Error("Choose one or three trials.");
     if (!Number.isFinite(request.timeLimitMs) || request.timeLimitMs < 100 || request.timeLimitMs > 10000) throw new Error("Invalid time limit.");
     if (!request.modes.length || request.modes.some(mode => !searchModes.includes(mode))) throw new Error("Choose an available search method.");

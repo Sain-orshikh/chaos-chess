@@ -25,3 +25,8 @@ Devour mode: pawn eat pawn to turn into bishop. Bishop eat pawn-knight. Etc. (ow
 Timeline:
 Build core board, movement system first
 Bot, elo
+
+Build normal chess option with my bot. And local. Casual and ranked is mine only (or not?)(if they can beat my bot they get elo? depends on what elo we get for that one)
+Finish casual, ranked mode with online multiplayer
+Finish leaderboard
+Seo, personal note

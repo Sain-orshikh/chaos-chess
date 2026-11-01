@@ -10,7 +10,7 @@ export type BotSettings = {
     quiescence: boolean; maxQuiescencePly: number; maxCheckEvasionPly: number;
 };
 export const defaultBotSettings: BotSettings = {
-    mode: "alpha-beta-ordered", maxDepth: 4, maxTimeMs: 3000,
+    mode: "alpha-beta-ordered", maxDepth: 16, maxTimeMs: 3000,
     quiescence: true, maxQuiescencePly: 8, maxCheckEvasionPly: 8,
 };
 export type BotRequest = { board: Board; turn: Color; settings: BotSettings; castling?: CastlingState; evaluationSeed?: number };
@@ -30,7 +30,7 @@ export type BotMessage =
 export function searchBot(request: BotRequest, progress: (report: BotReport) => void = () => {}): BotResult {
     const { board, turn, settings } = request;
     const castling = { ...(request.castling ?? createCastlingState()) };
-    if (!Number.isInteger(settings.maxDepth) || settings.maxDepth < 1 || settings.maxDepth > 8) throw new RangeError("Choose a depth from 1 to 8.");
+    if (!Number.isInteger(settings.maxDepth) || settings.maxDepth < 1 || settings.maxDepth > 16) throw new RangeError("Choose a depth from 1 to 16.");
     if (!Number.isFinite(settings.maxTimeMs) || settings.maxTimeMs < 100 || settings.maxTimeMs > 10000) throw new RangeError("Choose a time limit from 100 to 10000 ms.");
     const start = performance.now();
     const moves: BasicMove[] = [];

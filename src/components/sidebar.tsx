@@ -67,7 +67,7 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
         <button disabled><Icon name="flag" />Casual<span className="soon">Soon</span></button>
         <button disabled title="Ranked is not available"><Icon name="rank" />Ranked<span className="soon">Soon</span></button>
         <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><Icon name="bot" />Play bot<span className="available" /></Link>
-        <button disabled><Icon name="chaos" />Chaos mode<span className="soon">Soon</span></button>
+        <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><Icon name="person" />Local 1v1</Link>
       </nav>
       <p className="nav-label section-gap">Explore</p>
       <nav className="nav" aria-label="Explore">

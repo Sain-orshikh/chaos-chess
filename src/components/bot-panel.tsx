@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import type { BotMessage, BotReport, BotResult, BotSettings } from "./common/bot_search";
 import type { BasicMove, Board, Color, CastlingState } from "./utils/types";
-import type { SearchMode } from "./common/engine";
+import { defaultBotSettings } from "./common/bot_search";
 
 type Props = {
     board: Board; castling: CastlingState; turn: Color; active: boolean; finished: boolean;
     settings: BotSettings; onSettings: (settings: BotSettings) => void;
     onMove: (move: BasicMove, board: Board, turn: Color) => void;
 };
-const methods: Record<SearchMode, string> = { minimax: "Plain minimax", "alpha-beta": "Alpha-beta", "alpha-beta-ordered": "Alpha-beta + ordering" };
 
 export default function BotPanel({ board, castling, turn, active, finished, settings, onSettings, onMove }: Props) {
     // Stable for every turn/depth in this game; a restart remounts this panel with a new seed.
@@ -40,7 +39,7 @@ export default function BotPanel({ board, castling, turn, active, finished, sett
                 }
             };
             current.onerror = () => { fail("The bot could not finish its search. Try again."); current.terminate(); };
-            current.postMessage({ board, castling, turn, settings, evaluationSeed });
+            current.postMessage({ board, castling, turn, settings: { ...settings, mode: defaultBotSettings.mode, quiescence: true }, evaluationSeed });
         } catch {
             queueMicrotask(() => fail("The background search could not start. Try again."));
         }
@@ -53,20 +52,18 @@ export default function BotPanel({ board, castling, turn, active, finished, sett
     const stats = report?.stats;
     const status = finished ? "Game over" : error ? "Search interrupted" : active ? `Rooke is thinking${report ? ` · depth ${report.searchingDepth}` : "…"}` : "Your turn";
     return <aside className="bot-panel lab-configuration" aria-label="Bot controls and statistics">
-        <div className="bot-panel-heading"><h2>Rooke</h2><span>Engine preview · unrated</span></div>
+        <div className="bot-panel-heading"><h2>Rooke</h2><span>Current engine · unrated</span></div>
         <p role="status" className="bot-status">{status}</p>
         <fieldset disabled={active && !error}>
             <legend className="sr-only">Bot search settings</legend>
-            <label className="lab-field">Search method<select value={settings.mode} onChange={e => change("mode", e.target.value as SearchMode)}>{Object.entries(methods).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <div className="bot-options">
-                <label className="lab-field">Maximum depth<select value={settings.maxDepth} onChange={e => change("maxDepth", Number(e.target.value))}>{[1, 2, 3, 4, 5, 6, 7, 8].map(value => <option key={value} value={value}>{value} {value === 1 ? "ply" : "plies"}</option>)}</select></label>
+                <label className="lab-field">Maximum depth<select value={settings.maxDepth} onChange={e => change("maxDepth", Number(e.target.value))}>{Array.from({ length: 16 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? "ply" : "plies"}</option>)}</select></label>
                 <label className="lab-field">Time per move<select value={settings.maxTimeMs} onChange={e => change("maxTimeMs", Number(e.target.value))}>{[100, 500, 1000, 3000, 5000, 10000].map(value => <option key={value} value={value}>{value < 1000 ? `${value} ms` : `${value / 1000} s`}</option>)}</select></label>
             </div>
-            <details className="bot-advanced"><summary>Quiescence settings · {settings.quiescence ? "on" : "off"}</summary>
-            <label className="lab-method"><input type="checkbox" checked={settings.quiescence} onChange={e => change("quiescence", e.target.checked)} /><span><strong>Quiescence search</strong><small>Captures, promotions, and forced check escapes</small></span></label>
+            <details className="bot-advanced"><summary>Search extensions</summary>
             <div className="bot-options bot-extensions">
-                <label className="lab-field">Capture extension<select value={settings.maxQuiescencePly} disabled={!settings.quiescence} onChange={e => change("maxQuiescencePly", Number(e.target.value))}>{[0, 1, 2, 4, 6, 8, 12, 16].map(value => <option key={value} value={value}>{value} {value === 1 ? "ply" : "plies"}</option>)}</select></label>
-                <label className="lab-field">Extra check escapes<select value={settings.maxCheckEvasionPly} disabled={!settings.quiescence} onChange={e => change("maxCheckEvasionPly", Number(e.target.value))}>{[0, 2, 4, 8, 12, 16].map(value => <option key={value} value={value}>{value} plies</option>)}</select></label>
+                <label className="lab-field">Capture extension<select value={settings.maxQuiescencePly} onChange={e => change("maxQuiescencePly", Number(e.target.value))}>{[0, 1, 2, 4, 6, 8, 12, 16].map(value => <option key={value} value={value}>{value} {value === 1 ? "ply" : "plies"}</option>)}</select></label>
+                <label className="lab-field">Extra check escapes<select value={settings.maxCheckEvasionPly} onChange={e => change("maxCheckEvasionPly", Number(e.target.value))}>{[0, 2, 4, 8, 12, 16].map(value => <option key={value} value={value}>{value} plies</option>)}</select></label>
             </div>
             </details>
         </fieldset>
@@ -87,6 +84,6 @@ export default function BotPanel({ board, castling, turn, active, finished, sett
             ] as const).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
         </dl>
         {result && <p className="bot-help">{result.fallback ? "No depth finished; played a legal fallback move." : `Played the result from depth ${result.completedDepth}.`}{result.limit === "time" ? " Time limit reached." : result.limit === "quiescence" ? " A deeper search hit the check-extension limit." : ""}</p>}
-        <p className="bot-help">Counts include all attempted depths and partial searches. Generation is one measurement. Zobrist hashing is still planned. Rooke’s strength is not Elo calibrated yet.</p>
+        <p className="bot-help">Counts include all attempted depths and partial searches. Generation is one measurement. Transposition caching is enabled. Rooke’s strength is not Elo calibrated yet.</p>
     </aside>;
 }
