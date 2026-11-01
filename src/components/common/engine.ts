@@ -6,6 +6,8 @@ import { makeMove } from "./apply_move";
 import { isKingSafe } from "../utils/king_safety";
 import { evaluateBoard, DEFAULT_CHECKMATE_EVAL_SCALE } from "../utils/checkmate_eval";
 import { createPieceSquareTables, defaultPieceSquareTables } from "../utils/positional_eval";
+import { zobrist_hash } from "../utils/hash";
+import { createTranspositionTable } from "../utils/transpose_table";
 
 export type SearchStats = {
     positionsVisited: number;
@@ -124,6 +126,8 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
     let checks = 0;
     let lastProgress = start;
     if (stats) { Object.assign(stats, createSearchStats()); stats.positionsVisited = 1; }
+    const table = createTranspositionTable()
+
 
     function checkLimits(force = false) {
         if (!force && (++checks & 255) !== 0) return;
@@ -198,20 +202,68 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
     function search(turn: Color, remainingDepth: number, alpha: number, beta: number): number {
         if (stats) stats.positionsVisited++;
         checkLimits();
-        const moves = legalMoves(board, turn, castling, stats);
-        if (moves.length === 0) return terminalScore(turn, depth - remainingDepth);
-        if (remainingDepth === 0) {
-            return options.quiescence === false ? evaluate() : quiescence(turn, alpha, beta, 0, moves);
+
+        const alphaStart = alpha
+        const betaStart = beta
+
+        const hash = zobrist_hash(board, castling.white, castling.black, turn)
+        const entry = table.lookup(hash)
+        if (
+            entry !== undefined &&
+            entry.depth === remainingDepth
+        ) {
+            if (entry.bound === "exact"){
+                return entry.score
+            }
+            else if(entry.bound === "lower"){
+                alpha = Math.max(alpha, entry.score)
+            } 
+            else{
+                beta = Math.min(beta, entry.score)
+            }
+            if (alpha >= beta) return entry.score
         }
-        const orderedMoves = orderMoves(board, moves, mode);
-        const nextTurn = turn === "white" ? "black" : "white";
-        let bestScore = turn === "white" ? -Infinity : Infinity;
-        for (let index = 0; index < orderedMoves.length; index++) {
-            const score = afterMove(orderedMoves[index], false, () => search(nextTurn, remainingDepth - 1, alpha, beta));
-            if (turn === "white") { bestScore = Math.max(bestScore, score); alpha = Math.max(alpha, bestScore); }
-            else { bestScore = Math.min(bestScore, score); beta = Math.min(beta, bestScore); }
-            if (cutoff(alpha, beta, orderedMoves.length - index - 1)) break;
-        }
+        let bestMoveForThisPosition = null
+            const moves = legalMoves(board, turn, castling, stats);
+            if (moves.length === 0) return terminalScore(turn, depth - remainingDepth);
+            if (remainingDepth === 0) {
+                return options.quiescence === false ? evaluate() : quiescence(turn, alpha, beta, 0, moves);
+            }
+            const orderedMoves = orderMoves(board, moves, mode);
+            const nextTurn = turn === "white" ? "black" : "white";
+            let bestScore = turn === "white" ? -Infinity : Infinity;
+            for (let index = 0; index < orderedMoves.length; index++) {
+                const score = afterMove(orderedMoves[index], false, () => search(nextTurn, remainingDepth - 1, alpha, beta));
+                if (turn === "white") { 
+                    if (score > bestScore){
+                        bestScore = score
+                        bestMoveForThisPosition = orderedMoves[index]
+                    }
+                    alpha = Math.max(alpha, bestScore); 
+                }
+                else { 
+                    if (score < bestScore){
+                        bestScore = score
+                        bestMoveForThisPosition = orderedMoves[index]
+                    }
+                    beta = Math.min(beta, bestScore); 
+                }
+                if (cutoff(alpha, beta, orderedMoves.length - index - 1)) break;
+            }
+
+            const bound =
+                bestScore <= alphaStart ? "upper" :
+                bestScore >= betaStart  ? "lower" :
+                "exact";
+
+            table.store({
+                hash,
+                depth: remainingDepth,
+                score: bestScore,
+                bound: bound,
+                bestMove: bestMoveForThisPosition,
+            });
+
         return bestScore;
     }
 

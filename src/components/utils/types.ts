@@ -33,3 +33,11 @@ export { pieceIds, pieceNames } from "./pieces";
 
 export const offsetsS = [-8, 8, -1, 1]
 export const offsetsD = [-9, -7, 7, 9]
+
+export type TranspositionEntry = {
+    hash: bigint;
+    depth: number;
+    score: number;
+    bound: "exact" | "lower" | "upper";
+    bestMove: BasicMove | null;
+};
