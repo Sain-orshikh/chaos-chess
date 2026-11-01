@@ -6,6 +6,9 @@ export type PromotionPiece = "queen" | "rook" | "bishop" | "knight";
 
 // Squares run from a8 = 0 to h1 = 63; square = row * 8 + col.
 export type Board = number[];
+// True means this color has already used its one castle, regardless of piece movement history.
+export type CastlingState = Record<Color, boolean>;
+export function createCastlingState(): CastlingState { return { white: false, black: false }; }
 
 export type BasicMove = {
     from: number;
@@ -17,6 +20,13 @@ export type BasicMove = {
     to: number;
     kind: "rotate";
     piece: PieceName;
+} | {
+    from: number;
+    to: number;
+    kind: "castle";
+    rookFrom: number;
+    rookTo: number;
+    promotion?: never;
 };
 
 export { pieceIds, pieceNames } from "./pieces";

@@ -11,6 +11,7 @@ type Movement = {
     horse?: boolean;
     pawn?: boolean;
     checkers?: boolean;
+    castle?: boolean;
 };
 
 type PieceDefinition = {
@@ -33,7 +34,7 @@ export const pieceDefinitions: Record<PieceName, PieceDefinition> = {
     diagonalrook: { id: 5, value: 500, label: "diagonal rook", image: "rook-diagonal", movement: { diagonal: 7 }, rotatesTo: "rook" },
     queen: { id: 6, value: 800, label: "queen", image: "queen", fen: "q", movement: { straight: 7, horse: true } },
     // Kings cannot be captured; checkmate is scored separately from material.
-    king: { id: 7, value: 0, label: "king", image: "king", fen: "k", movement: { straight: 1, diagonal: 1 } },
+    king: { id: 7, value: 0, label: "king", image: "king", fen: "k", movement: { straight: 1, diagonal: 1, castle: true } },
 };
 
 const names = Object.keys(pieceDefinitions) as PieceName[];

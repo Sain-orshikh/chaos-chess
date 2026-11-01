@@ -12,11 +12,12 @@ type Props = {
     status: FinishedStatus;
     playerColor: Color;
     playerName: string;
+    opponentName?: string;
     onPlayAgain: () => void;
     onViewBoard: () => void;
 };
 
-export default function GameResultModal({ status, playerColor, playerName, onPlayAgain, onViewBoard }: Props) {
+export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard }: Props) {
     const dialog = useRef<HTMLDialogElement>(null);
     const draw = status.kind === "stalemate";
     const won = status.kind === "checkmate" && status.winner === playerColor;
@@ -35,7 +36,7 @@ export default function GameResultModal({ status, playerColor, playerName, onPla
         aria-labelledby="game-result-title" aria-describedby="game-result-reason"
         onCancel={onViewBoard}
         onClick={event => { if (event.target === event.currentTarget) onViewBoard(); }}>
-        <div className="result-topline"><span>Local 1v1</span><button type="button" className="icon-button" aria-label="Close game result" onClick={onViewBoard}><Icon name="close" /></button></div>
+        <div className="result-topline"><span>{opponentName === "Rooke" ? "vs Rooke" : "Local 1v1"}</span><button type="button" className="icon-button" aria-label="Close game result" onClick={onViewBoard}><Icon name="close" /></button></div>
         <div className={`result-emblem${draw ? " paired" : ""}`} aria-hidden="true">
             {Piece("king", winnerColor)}
             {draw && Piece("king", opponentColor)}
@@ -50,7 +51,7 @@ export default function GameResultModal({ status, playerColor, playerName, onPla
             </div>
             <div className={!draw && !won ? "winner" : ""}>
                 <span className={`player-color ${opponentColor}`} />
-                <span className="result-player"><strong>Player 2</strong><small>{opponentColor === "white" ? "White" : "Black"}</small></span>
+                <span className="result-player"><strong>{opponentName}</strong><small>{opponentColor === "white" ? "White" : "Black"}</small></span>
                 <span className="result-score">{draw ? "½" : won ? "0" : "1"}</span>
             </div>
         </div>

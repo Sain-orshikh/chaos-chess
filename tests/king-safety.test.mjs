@@ -35,6 +35,7 @@ const { parseBenchmarkFen, benchmarkPositions } = load('benchmark_positions');
 const { runBenchmark } = load('benchmark');
 const { saveUndoInformation, unmakeMove } = load('legal_move');
 const { createGame, gameReducer, getGameStatus, gameResultScore } = load('game_state');
+const { endgameWeight, evaluateBoard, ForceKingToCheckmateEval } = load('../utils/checkmate_eval');
 
 function position(...pieces) {
     const board = Array(64).fill(0);
@@ -624,8 +625,8 @@ test('minimax returns null for finished positions and rejects invalid depths', (
 test('search counters count leaves, edges, and cutoffs and reset between searches', () => {
     const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')]);
     const stats = createSearchStats();
-    const move = Engine(board, 'white', 2, stats);
-    assert.deepEqual(Engine(board, 'white', 2), move);
+    const move = Engine(board, 'white', 2, stats, { positionalScale: 0 });
+    assert.deepEqual(Engine(board, 'white', 2, undefined, { positionalScale: 0 }), move);
     assert.equal(stats.positionsVisited, 9);
     assert.equal(stats.movesExplored, 8);
     assert.equal(stats.positionsEvaluated, 5);
@@ -635,7 +636,7 @@ test('search counters count leaves, edges, and cutoffs and reset between searche
     assert.equal(stats.movesSkipped, 4);
     assert.ok(stats.generatedMoves > stats.movesExplored);
     assert.ok(stats.elapsedMs >= 0);
-    Engine(board, 'white', 1, stats);
+    Engine(board, 'white', 1, stats, { positionalScale: 0 });
     assert.equal(stats.positionsVisited, 4);
     assert.equal(stats.positionsEvaluated, 3);
     assert.equal(stats.cutoffs, 0);
@@ -661,7 +662,7 @@ test('benchmark FEN validation accepts presets and rejects unsafe custom inputs'
 test('plain minimax and alpha-beta agree while pruning reduces evaluations', () => {
     const board = parseFen('7k/8/8/8/8/8/8/K7');
     const plain = createSearchStats(), pruned = createSearchStats();
-    assert.deepEqual(Engine(board, 'white', 2, plain, { mode: 'minimax' }), Engine(board, 'white', 2, pruned, { mode: 'alpha-beta' }));
+    assert.deepEqual(Engine(board, 'white', 2, plain, { mode: 'minimax', positionalScale: 0 }), Engine(board, 'white', 2, pruned, { mode: 'alpha-beta', positionalScale: 0 }));
     assert.equal(plain.positionsEvaluated, 9);
     assert.equal(pruned.positionsEvaluated, 5);
     assert.equal(plain.cutoffs, 0);
@@ -679,7 +680,7 @@ test('search deadline unwinds every move and retains partial statistics', () => 
 
 test('benchmark runner emits generation measurements and complete comparisons', () => {
     const messages = [];
-    runBenchmark({ fen: '7k/8/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000, quiescence: false }, message => messages.push(message));
+    runBenchmark({ fen: '7k/8/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000, quiescence: false, positionalScale: 0 }, message => messages.push(message));
     assert.equal(messages[0].type, 'generation');
     assert.equal(messages[0].legalMoves, 3);
     assert.ok(messages[0].microseconds > 0);
@@ -727,11 +728,14 @@ test('ordering ranks material magnitudes, promotions, jumps, and king attackers 
     assert.equal(movePriority(white, { from: 36, to: 28, kind: 'c' }), movePriority(black, { from: 36, to: 28, kind: 'c' }));
 });
 
-function referenceMinimax(board, turn, depth) {
-    const moves = board.flatMap((piece, square) => pieceColor(piece) === turn ? generate(board, square) : []);
-    if (!moves.length) return isKingSafe(board, turn) ? 0 : turn === 'white' ? -MATE_SCORE : MATE_SCORE;
-    if (depth === 0) return board.reduce((sum, piece) => sum + pieceValue(piece), 0);
-    const scores = moves.map(move => referenceMinimax(applyMove(board, move), turn === 'white' ? 'black' : 'white', depth - 1));
+function referenceMinimax(board, turn, depth, ply = 0, castling = { white: false, black: false }) {
+    const moves = board.flatMap((piece, square) => pieceColor(piece) === turn ? generate(board, square, castling) : []);
+    if (!moves.length) return isKingSafe(board, turn) ? 0 : turn === 'white' ? -MATE_SCORE + ply : MATE_SCORE - ply;
+    if (depth === 0) return evaluateBoard(board);
+    const scores = moves.map(move => {
+        const flags = { ...castling };
+        return referenceMinimax(applyMove(board, move, flags), turn === 'white' ? 'black' : 'white', depth - 1, ply + 1, flags);
+    });
     return turn === 'white' ? Math.max(...scores) : Math.min(...scores);
 }
 
@@ -742,7 +746,8 @@ test('ordered alpha-beta agrees with copied-board minimax on presets for both si
             const expected = referenceMinimax(board, turn, 2);
             for (const mode of ['minimax', 'alpha-beta', 'alpha-beta-ordered']) {
                 const move = Engine(board, turn, 2, undefined, { mode });
-                const actual = referenceMinimax(applyMove(board, move), turn === 'white' ? 'black' : 'white', 1);
+                const flags = { white: false, black: false };
+                const actual = referenceMinimax(applyMove(board, move, flags), turn === 'white' ? 'black' : 'white', 1, 1, flags);
                 assert.equal(actual, expected, `${preset.id}, ${turn}, ${mode}`);
                 assert.deepEqual(board, before);
             }
@@ -843,4 +848,339 @@ test('benchmark distinguishes an unresolved-check extension limit from a time li
     assert.equal(results[0].move, null);
     assert.ok(results[0].stats.quiescenceLimitHits > 0);
     assert.equal(messages.at(-1).type, 'done');
+});
+
+const { searchBot, defaultBotSettings } = load('bot_search');
+
+for (const turn of ['white', 'black']) {
+    test(`playable bot completes iterative depths for ${turn} without changing the position`, () => {
+        const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')],
+            [6, 2, makePiece('pawn', 'white')], [1, 5, makePiece('pawn', 'black')]);
+        const before = board.slice();
+        const reports = [];
+        const result = searchBot({ board, turn, settings: { ...defaultBotSettings, maxDepth: 2, quiescence: false } }, report => reports.push(report));
+        assert.equal(result.completedDepth, 2);
+        assert.equal(result.limit, null);
+        assert.equal(result.fallback, false);
+        assert.deepEqual(result.move, Engine(board, turn, 2));
+        assert.ok(generate(board, result.move.from).some(move => JSON.stringify(move) === JSON.stringify(result.move)));
+        assert.ok(result.stats.positionsVisited > 0);
+        assert.ok(reports.length >= 4);
+        for (let index = 1; index < reports.length; index++) assert.ok(reports[index].stats.positionsVisited >= reports[index - 1].stats.positionsVisited);
+        assert.deepEqual(board, before);
+    });
+}
+
+test('bot time budget retains a completed move and includes partial work in statistics', () => {
+    const board = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1');
+    const before = board.slice();
+    const result = searchBot({ board, turn: 'white', settings: { ...defaultBotSettings, mode: 'minimax', maxDepth: 8, maxTimeMs: 100, quiescence: false } });
+    assert.equal(result.limit, 'time');
+    assert.ok(result.completedDepth >= 1 && result.completedDepth < 8);
+    assert.equal(result.fallback, false);
+    assert.ok(result.stats.elapsedMs >= 100 && result.stats.elapsedMs < 3000);
+    assert.deepEqual(result.move, Engine(board, 'white', result.completedDepth, undefined, { mode: 'minimax' }));
+    assert.deepEqual(board, before);
+});
+
+test('bot falls back to a legal move when the check-extension limit prevents depth one', () => {
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [6, 7, makePiece('rook', 'white')]);
+    const result = searchBot({ board, turn: 'white', settings: { ...defaultBotSettings, maxQuiescencePly: 0, maxCheckEvasionPly: 0 } });
+    assert.equal(result.limit, 'quiescence');
+    assert.equal(result.completedDepth, 0);
+    assert.equal(result.fallback, true);
+    assert.ok(generate(board, result.move.from).some(move => JSON.stringify(move) === JSON.stringify(result.move)));
+});
+
+test('game accepts complete engine promotions and rotations, rejects illegal and stale replies', () => {
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [1, 2, makePiece('pawn', 'white')]);
+    const game = createGame(board);
+    const move = generate(board, 10).find(move => move.promotion === 'knight');
+    const promoted = gameReducer(game, { type: 'engine-move', move, expectedBoard: board, turn: 'white' });
+    assert.equal(promoted.board[move.to], makePiece('knight', 'white'));
+    assert.equal(promoted.pendingPromotion, null);
+    assert.equal(promoted.turn, 'black');
+    assert.equal(gameReducer(game, { type: 'engine-move', move, expectedBoard: board.slice(), turn: 'white' }), game);
+    assert.equal(gameReducer(game, { type: 'engine-move', move, expectedBoard: board, turn: 'black' }), game);
+    assert.equal(gameReducer(game, { type: 'engine-move', move: { from: 10, to: 3, kind: 'm' }, expectedBoard: board, turn: 'white' }), game);
+    const rookBoard = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [5, 2, makePiece('rook', 'white')]);
+    const rotation = generate(rookBoard, 42).find(move => move.kind === 'rotate');
+    const rotated = gameReducer(createGame(rookBoard), { type: 'engine-move', move: rotation, expectedBoard: rookBoard, turn: 'white' });
+    assert.equal(rotated.board[42], makePiece('diagonalrook', 'white'));
+    assert.equal(rotated.turn, 'black');
+});
+
+test('endgame weight depends on defender non-king count and stays within zero to one', () => {
+    assert.equal(endgameWeight(15), 0);
+    assert.equal(endgameWeight(8), 0);
+    assert.equal(endgameWeight(4), 0.5);
+    assert.equal(endgameWeight(0), 1);
+    assert.equal(endgameWeight(-1), 1);
+    assert.equal(endgameWeight(30), 0);
+});
+
+test('king-driving evaluation rewards approach and edges with a tunable multiplier', () => {
+    assert.ok(ForceKingToCheckmateEval(49, 7, 1) > ForceKingToCheckmateEval(56, 7, 1));
+    // Both targets are seven steps away, isolating the edge bonus from approach.
+    assert.ok(ForceKingToCheckmateEval(56, 63, 1) > ForceKingToCheckmateEval(56, 27, 1));
+    assert.equal(ForceKingToCheckmateEval(56, 7, 0), 0);
+    assert.equal(ForceKingToCheckmateEval(56, 7, 1, 20), 2 * ForceKingToCheckmateEval(56, 7, 1, 10));
+});
+
+test('endgame evaluation keeps White-positive signs, ignores attacker count, and preserves material at scale zero', () => {
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 3, makePiece('rook', 'white')]);
+    assert.ok(evaluateBoard(board) > 500);
+    const extraAttackers = board.slice();
+    for (let square = 8; square < 24; square++) extraAttackers[square] = makePiece('rook', 'white');
+    const extraMaterial = extraAttackers.reduce((sum, piece) => sum + pieceValue(piece), 0);
+    assert.ok(Math.abs((evaluateBoard(extraAttackers, 5, 0) - extraMaterial) - (evaluateBoard(board, 5, 0) - 500)) < 1e-10);
+    assert.equal(evaluateBoard(board, 0, 0), 500);
+    assert.ok(evaluateBoard(board, 20, 0) > evaluateBoard(board, 10, 0));
+    assert.equal(evaluateBoard(board.map(piece => -piece || 0), 5, 0), -evaluateBoard(board, 5, 0));
+    const pawnOnly = board.slice(); pawnOnly[35] = makePiece('pawn', 'white');
+    assert.equal(evaluateBoard(pawnOnly, 5, 0), 100);
+    const equal = board.slice(); equal[28] = makePiece('rook', 'black');
+    assert.equal(evaluateBoard(equal, 5, 0), 0);
+});
+
+for (const color of ['white', 'black']) {
+    test(`${color} engine uses king-driving bonus in normal and quiescence evaluations`, () => {
+        const white = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 3, makePiece('rook', 'white')]);
+        const board = color === 'white' ? white : white.slice().reverse().map(piece => -piece || 0);
+        const before = board.slice();
+        for (const quiescence of [false, true]) {
+            const move = engineSearch(board, color, 1, undefined, { quiescence });
+            assert.equal(move.from, color === 'white' ? 56 : 7);
+            assert.equal(move.to, color === 'white' ? 49 : 14);
+            assert.deepEqual(board, before);
+        }
+        for (const checkmateEvalScale of [-1, 101, NaN, Infinity]) assert.throws(() => engineSearch(board, color, 1, undefined, { checkmateEvalScale }), RangeError);
+    });
+    test(`${color} chooses immediate checkmate over a longer forced mate or king-driving bonus`, () => {
+        const white = position([0, 0, makePiece('king', 'black')], [0, 2, makePiece('rook', 'white')], [2, 2, makePiece('rook', 'white')], [7, 7, makePiece('king', 'white')]);
+        const board = color === 'white' ? white : white.slice().reverse().map(piece => -piece || 0);
+        const move = engineSearch(board, color, 3, undefined, { quiescence: false, checkmateEvalScale: 100 });
+        assert.deepEqual(getGameStatus(applyMove(board, move), color === 'white' ? 'black' : 'white'), { kind: 'checkmate', winner: color });
+    });
+}
+
+for (const color of ['white', 'black']) {
+    const home = color === 'white' ? 60 : 4;
+    const enemy = color === 'white' ? 'black' : 'white';
+    const row = color === 'white' ? 7 : 0;
+    function castleBoard() {
+        return position([row, 4, makePiece('king', color)], [row, 0, makePiece('rook', color)],
+            [row, 7, makePiece('rook', color)], [color === 'white' ? 0 : 7, 4, makePiece('king', enemy)]);
+    }
+    test(`${color} generates both castles with correct squares without mutating flags or board`, () => {
+        const board = castleBoard(), before = board.slice(), flags = { white: false, black: false };
+        const castles = generate(board, home, flags).filter(move => move.kind === 'castle');
+        assert.deepEqual(castles, [
+            { from: home, to: home + 2, kind: 'castle', rookFrom: home + 3, rookTo: home + 1 },
+            { from: home, to: home - 2, kind: 'castle', rookFrom: home - 4, rookTo: home - 1 },
+        ]);
+        assert.deepEqual(board, before);
+        assert.deepEqual(flags, { white: false, black: false });
+        assert.equal(movePriority(board, castles[0]), 0);
+    });
+    test(`${color} checks castle wings independently and requires its own unrotated rook`, () => {
+        const board = castleBoard(); board[home + 1] = makePiece('knight', color);
+        assert.deepEqual(generate(board, home).filter(move => move.kind === 'castle').map(move => move.to), [home - 2]);
+        board[home + 1] = 0; board[home - 3] = makePiece('knight', color);
+        assert.deepEqual(generate(board, home).filter(move => move.kind === 'castle').map(move => move.to), [home + 2]);
+        board[home - 3] = 0; board[home + 3] = makePiece('diagonalrook', color); board[home - 4] = makePiece('rook', enemy);
+        assert.equal(generate(board, home).filter(move => move.kind === 'castle').length, 0);
+    });
+    test(`${color} may castle across an attack but cannot start or finish in check`, () => {
+        const board = castleBoard();
+        const attackRow = color === 'white' ? 3 : 4;
+        board[attackRow * 8 + 5] = makePiece('rook', enemy);
+        assert.equal(isKingSafe(board, color), true);
+        assert.ok(generate(board, home).some(move => move.kind === 'castle' && move.to === home + 2));
+        board[attackRow * 8 + 5] = 0; board[attackRow * 8 + 6] = makePiece('rook', enemy);
+        const before = board.slice();
+        assert.equal(generate(board, home).some(move => move.kind === 'castle' && move.to === home + 2), false);
+        assert.deepEqual(board, before);
+        board[attackRow * 8 + 6] = 0; board[attackRow * 8 + 4] = makePiece('rook', enemy);
+        assert.equal(isKingSafe(board, color), false);
+        assert.equal(generate(board, home).some(move => move.kind === 'castle'), false);
+    });
+    test(`${color} earlier king and rook movements do not consume castling`, () => {
+        const board = castleBoard(), flags = { white: false, black: false };
+        const step = color === 'white' ? -8 : 8;
+        for (const move of [
+            { from: home, to: home + step, kind: 'm' }, { from: home + step, to: home, kind: 'm' },
+            { from: home + 3, to: home + 3 + step, kind: 'm' }, { from: home + 3 + step, to: home + 3, kind: 'm' },
+        ]) makeMove(board, move, flags);
+        assert.equal(flags[color], false);
+        assert.equal(generate(board, home, flags).filter(move => move.kind === 'castle').length, 2);
+        const movedKing = board.slice(); movedKing[home + step] = movedKing[home]; movedKing[home] = 0;
+        assert.equal(generate(movedKing, home + step, flags).some(move => move.kind === 'castle'), false);
+    });
+    test(`${color} castle updates the game once, preserves the previous state, and rejects reused permission`, () => {
+        const board = castleBoard(), game = createGame(board, color);
+        const next = click(click(game, row, 4), row, 6);
+        assert.equal(next.board[home], 0);
+        assert.equal(next.board[home + 3], 0);
+        assert.equal(next.board[home + 2], makePiece('king', color));
+        assert.equal(next.board[home + 1], makePiece('rook', color));
+        assert.equal(next.castling[color], true);
+        assert.equal(next.castling[enemy], false);
+        assert.equal(game.castling[color], false);
+        assert.equal(next.turn, enemy);
+        assert.equal(next.lastMove.kind, 'castle');
+        const reused = createGame(castleBoard(), color, next.castling);
+        assert.equal(generate(reused.board, home, reused.castling).some(move => move.kind === 'castle'), false);
+        const restarted = gameReducer(next, { type: 'restart', board: castleBoard() });
+        assert.deepEqual(restarted.castling, { white: false, black: false });
+        const move = generate(board, home, game.castling).find(move => move.kind === 'castle');
+        const accepted = gameReducer(game, { type: 'engine-move', expectedBoard: board, turn: color, move });
+        assert.equal(accepted.castling[color], true);
+        assert.equal(gameReducer(game, { type: 'engine-move', expectedBoard: board, turn: color, move: { ...move, rookFrom: home } }), game);
+    });
+}
+
+test('nested castles restore both rooks, kings, and independent once-per-color flags', () => {
+    const board = parseFen('r3k2r/8/8/8/8/8/8/R3K2R w - - 0 1');
+    const before = board.slice(), flags = { white: false, black: false };
+    const white = generate(board, 60, flags).find(move => move.kind === 'castle' && move.to === 62);
+    const whiteUndo = saveUndoInformation(board, white, flags);
+    makeMove(board, white, flags);
+    assert.deepEqual(flags, { white: true, black: false });
+    const afterWhite = board.slice();
+    const black = generate(board, 4, flags).find(move => move.kind === 'castle' && move.to === 6);
+    assert.ok(black);
+    const blackUndo = saveUndoInformation(board, black, flags);
+    makeMove(board, black, flags);
+    assert.deepEqual(flags, { white: true, black: true });
+    unmakeMove(board, black, blackUndo, flags);
+    assert.deepEqual(flags, { white: true, black: false });
+    assert.deepEqual(board, afterWhite);
+    unmakeMove(board, white, whiteUndo, flags);
+    assert.deepEqual(flags, { white: false, black: false });
+    assert.deepEqual(board, before);
+});
+
+test('search and the bot worker request respect used castling without mutating the supplied position', () => {
+    const board = parseFen('4k3/8/8/8/8/8/8/R3K2R w - - 0 1');
+    const before = board.slice();
+    for (const used of [false, true]) {
+        const castling = { white: used, black: false };
+        const expected = board.flatMap((piece, square) => pieceColor(piece) === 'white' ? generate(board, square, castling) : []);
+        const bestScore = referenceMinimax(board, 'white', 2, 0, castling);
+        for (const mode of ['minimax', 'alpha-beta', 'alpha-beta-ordered']) {
+            const stats = createSearchStats();
+            const move = engineSearch(board, 'white', 2, stats, { mode, quiescence: false, castling });
+            assert.ok(expected.some(candidate => JSON.stringify(candidate) === JSON.stringify(move)));
+            const childFlags = { ...castling };
+            assert.equal(referenceMinimax(applyMove(board, move, childFlags), 'black', 1, 1, childFlags), bestScore);
+            assert.deepEqual(board, before);
+            assert.deepEqual(castling, { white: used, black: false });
+        }
+        const result = searchBot({ board, turn: 'white', castling, settings: { ...defaultBotSettings, maxDepth: 1, quiescence: false } });
+        assert.equal(result.legalMoves, expected.length);
+        assert.deepEqual(castling, { white: used, black: false });
+        assert.deepEqual(board, before);
+        assert.throws(() => engineSearch(board, 'white', 8, undefined, { castling, maxTimeMs: 0.000001 }), SearchTimeoutError);
+        assert.deepEqual(board, before);
+        assert.deepEqual(castling, { white: used, black: false });
+    }
+});
+
+const { POSITION_BONUS_LIMIT, boundedPositionBonus, openingWeight, STARTING_PHASE_MATERIAL,
+    createPieceSquareTables, defaultPieceSquareTables } = load('../utils/positional_eval');
+
+function mirrorColors(board) {
+    const mirrored = Array(64).fill(0);
+    for (let square = 0; square < 64; square++) mirrored[(7 - Math.floor(square / 8)) * 8 + square % 8] = -board[square] || 0;
+    return mirrored;
+}
+
+test('piece-square tables reward modest development, pawn advancement, and early king shelter', () => {
+    const t = defaultPieceSquareTables;
+    assert.ok(t[pieceIds.knight].opening[42] > t[pieceIds.knight].opening[57]);
+    assert.ok(t[pieceIds.bishop].opening[40] > t[pieceIds.bishop].opening[58]);
+    assert.ok(t[pieceIds.pawn].endgame[10] > t[pieceIds.pawn].endgame[18]);
+    assert.ok(t[pieceIds.king].opening[62] > t[pieceIds.king].opening[60]);
+    assert.ok(t[pieceIds.king].endgame[35] > t[pieceIds.king].endgame[60]);
+    assert.ok(t[pieceIds.queen].opening[59] > t[pieceIds.queen].opening[35]);
+    for (const table of Object.values(t)) {
+        assert.equal(table.opening.length, 64);
+        assert.equal(table.endgame.length, 64);
+        assert.ok([...table.opening, ...table.endgame].every(value => Math.abs(value) < 16));
+    }
+    const initial = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1');
+    assert.equal(evaluateBoard(initial), 0);
+    const developed = initial.slice(); developed[40] = developed[58]; developed[58] = 0;
+    assert.ok(evaluateBoard(developed) > evaluateBoard(initial));
+});
+
+test('opening phase uses both armies and ignores rook orientation', () => {
+    assert.equal(openingWeight(STARTING_PHASE_MATERIAL), 1);
+    assert.equal(openingWeight(STARTING_PHASE_MATERIAL / 2), 0.5);
+    assert.equal(openingWeight(0), 0);
+    assert.equal(openingWeight(STARTING_PHASE_MATERIAL * 2), 1);
+    for (const seed of [0, 17, 500]) {
+        const tables = createPieceSquareTables(seed);
+        assert.equal(tables[pieceIds.rook], tables[pieceIds.diagonalrook]);
+        const board = parseFen('4k3/8/8/8/3R4/8/8/4K3 w - - 0 1');
+        const rotated = board.slice(); rotated[35] = makePiece('diagonalrook', 'white');
+        assert.equal(evaluateBoard(board, 5, 1, tables), evaluateBoard(rotated, 5, 1, tables));
+    }
+});
+
+test('combined positional and king-driving preferences cannot outweigh one pawn of material', () => {
+    assert.equal(POSITION_BONUS_LIMIT, 40);
+    assert.ok(boundedPositionBonus(100000) < 40);
+    assert.ok(boundedPositionBonus(-100000) > -40);
+    assert.ok(boundedPositionBonus(101) > boundedPositionBonus(100));
+    const codes = [1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6, 0];
+    for (let sample = 0; sample < 100; sample++) {
+        const board = Array.from({ length: 64 }, (_, square) => codes[(square * 7 + sample * 3) % codes.length]);
+        board[60] = makePiece('king', 'white'); board[4] = makePiece('king', 'black'); board[32] = 0;
+        const richer = board.slice(); richer[32] = makePiece('pawn', 'white');
+        const tables = createPieceSquareTables(sample);
+        const material = board.reduce((sum, piece) => sum + pieceValue(piece), 0);
+        const score = evaluateBoard(board, 100, 2, tables);
+        assert.ok(Math.abs(score - material) < 40);
+        assert.ok(evaluateBoard(richer, 100, 2, tables) > score);
+    }
+});
+
+test('opening variation is stable, color-symmetric, tiny, and absent from endgame tables', () => {
+    const first = createPieceSquareTables(42), again = createPieceSquareTables(42), other = createPieceSquareTables(43);
+    assert.deepEqual(first, again);
+    assert.notDeepEqual(first, other);
+    for (const id of Object.keys(first)) {
+        assert.deepEqual(first[id].endgame, defaultPieceSquareTables[id].endgame);
+        for (let square = 0; square < 64; square++) assert.ok(Math.abs(first[id].opening[square] - defaultPieceSquareTables[id].opening[square]) <= 0.25);
+    }
+    const board = parseFen(benchmarkPositions[0].fen);
+    assert.equal(evaluateBoard(mirrorColors(board), 5, 1, first), -evaluateBoard(board, 5, 1, first));
+    const initial = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1');
+    assert.ok(Math.abs(evaluateBoard(initial, 5, 1, first)) < 1e-10);
+});
+
+test('seeded bot searches match the engine and keep material-only comparison available', () => {
+    const board = parseFen('4k3/1p6/8/8/3N4/8/2P5/4K3 w - - 0 1');
+    const before = board.slice();
+    const settings = { ...defaultBotSettings, maxDepth: 2, quiescence: false };
+    const result = searchBot({ board, turn: 'white', settings, evaluationSeed: 42 });
+    const expected = engineSearch(board, 'white', 2, undefined, { quiescence: false, evaluationSeed: 42 });
+    assert.deepEqual(result.move, expected);
+    assert.deepEqual(engineSearch(board, 'white', 2, undefined, { quiescence: false, evaluationSeed: 42 }), expected);
+    assert.deepEqual(board, before);
+    assert.equal(evaluateBoard(board, 0, 0), board.reduce((sum, piece) => sum + pieceValue(piece), 0));
+    for (const positionalScale of [-1, NaN, Infinity, 3]) assert.throws(() => engineSearch(board, 'white', 1, undefined, { positionalScale }), RangeError);
+    for (const evaluationSeed of [-1, NaN, 1.5, 0x100000000]) assert.throws(() => engineSearch(board, 'white', 1, undefined, { evaluationSeed }), RangeError);
+});
+
+test('opening development beats a free rook-form switch for both colors and multiple game seeds', () => {
+    const board = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1');
+    const before = board.slice();
+    for (const turn of ['white', 'black']) for (const evaluationSeed of [0, 42, 43, 1234]) {
+        const move = engineSearch(board, turn, 2, undefined, { evaluationSeed });
+        assert.notEqual(move.kind, 'rotate', `${turn}, seed ${evaluationSeed}`);
+        assert.deepEqual(board, before);
+    }
 });

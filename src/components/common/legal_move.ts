@@ -1,6 +1,6 @@
-import { offsetsS, offsetsD } from "../utils/types";
+import { offsetsS, offsetsD, createCastlingState } from "../utils/types";
 import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections, promotionPieces } from "../utils/pieces";
-import type { BasicMove, Board, Color } from "../utils/types";
+import type { BasicMove, Board, Color, CastlingState } from "../utils/types";
 import { findKing, isKingSafe } from "../utils/king_safety";
 import { makeMove } from "./apply_move";
 
@@ -8,25 +8,32 @@ export type UndoInformation = {
     movingPiece: number;
     capturedPiece: number;
     jumpedPiece: number;
+    castle?: { rookFromPiece: number; rookToPiece: number; castling: CastlingState };
 };
 
 /** Save affected square contents before makeMove changes them. */
-export function saveUndoInformation(board: Board, move: BasicMove): UndoInformation {
+export function saveUndoInformation(board: Board, move: BasicMove, castling: CastlingState = createCastlingState()): UndoInformation {
     return {
         movingPiece: board[move.from],
         capturedPiece: board[move.to],
         jumpedPiece: move.kind === "ch" ? board[(move.from + move.to) / 2] : 0,
+        ...(move.kind === "castle" ? { castle: { rookFromPiece: board[move.rookFrom], rookToPiece: board[move.rookTo], castling: { ...castling } } } : {}),
     };
 }
 
-export function unmakeMove(board: Board, move: BasicMove, undo: UndoInformation): void {
+export function unmakeMove(board: Board, move: BasicMove, undo: UndoInformation, castling: CastlingState = createCastlingState()): void {
     board[move.from] = undo.movingPiece;
     board[move.to] = undo.capturedPiece;
     if (move.kind === "ch") board[(move.from + move.to) / 2] = undo.jumpedPiece;
+    if (move.kind === "castle" && undo.castle) {
+        board[move.rookFrom] = undo.castle.rookFromPiece;
+        board[move.rookTo] = undo.castle.rookToPiece;
+        Object.assign(castling, undo.castle.castling);
+    }
 }
 
 /** Generate legal moves from a flat square index (a8 = 0, h1 = 63). */
-export default function LegalMoveGenerate(board: Board, from: number) {
+export default function LegalMoveGenerate(board: Board, from: number, castling: CastlingState = createCastlingState()) {
     const row = Math.floor(from / 8)
     const col = from % 8
     const piece = board[from]
@@ -36,7 +43,9 @@ export default function LegalMoveGenerate(board: Board, from: number) {
 
     const color = pieceColor(piece) as Color
     const kingId = pieceIds.king * (color === "white" ? 1 : -1)
+    const rookId = pieceIds.rook * (color === "white" ? 1 : -1)
     const kingPos = findKing(board, kingId)
+    const kingOrigin = (color === "white" ? 60 : 4)
     if (kingPos === -1) return moves
     const enemyKingPos = findKing(board, -kingId)
     const definition = pieceDefinition(piece)
@@ -190,6 +199,21 @@ export default function LegalMoveGenerate(board: Board, from: number) {
         }
     }
 
+    function genCastle() {
+        if (origin !== kingOrigin || castling[color] || !isKingSafe(board, color, kingPos)) return;
+        for (const [direction, distance] of [[1, 3], [-1, 4]] as const) {
+            const rookFrom = origin + direction * distance;
+            if (board[rookFrom] !== rookId) continue;
+            let clear = true;
+            for (let step = 1; step < distance; step++) {
+                if (board[origin + direction * step] !== 0) { clear = false; break; }
+            }
+            // Variant rule: passing through an attacked square is allowed.
+            // The shared filter tests the final position with BOTH pieces moved.
+            if (clear) moves.push({ from: origin, to: origin + direction * 2, kind: "castle", rookFrom, rookTo: origin + direction });
+        }
+    }
+
     const movement = definition.movement;
     if (movement.straight) genStraight(movement.straight);
     if (movement.diagonal) genDiagonal(movement.diagonal);
@@ -199,11 +223,12 @@ export default function LegalMoveGenerate(board: Board, from: number) {
     if (definition.rotatesTo) {
         moves.push({ from: origin, to: origin, kind: "rotate", piece: definition.rotatesTo });
     }
+    if (movement.castle) genCastle();
 
     // A promotion choice is part of the move, not a second turn.
     const candidates = Math.abs(piece) === pieceIds.pawn
         ? moves.flatMap((move): BasicMove[] => {
-            if (move.kind !== "rotate" && Math.floor(move.to / 8) === (color === "white" ? 0 : 7)) {
+            if (move.kind !== "rotate" && move.kind !== "castle" && Math.floor(move.to / 8) === (color === "white" ? 0 : 7)) {
                 return promotionPieces.map(promotion => ({ ...move, promotion }));
             }
             return [move];
@@ -224,14 +249,14 @@ export default function LegalMoveGenerate(board: Board, from: number) {
             }
         }
 
-        const undo = saveUndoInformation(board, move);
+        const undo = saveUndoInformation(board, move, castling);
 
         const nextKingPos = piece === kingId ? move.to : kingPos;
-        makeMove(board, move);
+        makeMove(board, move, castling);
         try {
             return isKingSafe(board, color, nextKingPos);
         } finally {
-            unmakeMove(board, move, undo);
+            unmakeMove(board, move, undo, castling);
         }
     })
 

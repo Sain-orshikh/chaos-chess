@@ -3,9 +3,12 @@ import type { SearchMode, SearchStats } from "./engine";
 import LegalMoveGenerate from "./legal_move";
 import { parseBenchmarkFen } from "./benchmark_positions";
 import { pieceColor } from "../utils/pieces";
-import type { BasicMove } from "../utils/types";
+import { createCastlingState } from "../utils/types";
+import type { BasicMove, CastlingState } from "../utils/types";
 
 export type BenchmarkRequest = {
+    castling?: CastlingState;
+    positionalScale?: number;
     fen: string; modes: SearchMode[]; maxDepth: number; repetitions: number; timeLimitMs: number; quiescence?: boolean; maxQuiescencePly?: number; maxCheckEvasionPly?: number;
 };
 export type BenchmarkResult = {
@@ -23,6 +26,7 @@ function median(values: number[]): number { return [...values].sort((a, b) => a 
 
 export function runBenchmark(request: BenchmarkRequest, emit: (message: BenchmarkMessage) => void): void {
     const { board, turn } = parseBenchmarkFen(request.fen);
+    const castling = { ...(request.castling ?? createCastlingState()) };
     if (!Number.isInteger(request.maxDepth) || request.maxDepth < 1 || request.maxDepth > 8) throw new Error("Choose a depth from 1 to 8.");
     if (![1, 3].includes(request.repetitions)) throw new Error("Choose one or three trials.");
     if (!Number.isFinite(request.timeLimitMs) || request.timeLimitMs < 100 || request.timeLimitMs > 10000) throw new Error("Invalid time limit.");
@@ -35,7 +39,7 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
     function generateAll() {
         let count = 0;
         for (let square = 0; square < 64; square++) {
-            if (pieceColor(board[square]) === turn) count += LegalMoveGenerate(board, square).length;
+            if (pieceColor(board[square]) === turn) count += LegalMoveGenerate(board, square, castling).length;
         }
         return count;
     }
@@ -49,7 +53,7 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
     }
     emit({ type: "generation", microseconds: median(samples), legalMoves: generateAll() });
     for (const mode of [...new Set(request.modes)]) {
-        Engine(board, turn, 1, undefined, { mode, quiescence: false }); // Untimed warmup.
+        Engine(board, turn, 1, undefined, { mode, quiescence: false, castling, positionalScale: request.positionalScale }); // Untimed warmup.
         for (let depth = 1; depth <= request.maxDepth; depth++) {
             const samplesMs: number[] = [];
             let move: BasicMove | null = null;
@@ -60,7 +64,7 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
                 emit({ type: "progress", mode, depth, trial, stats });
                 try {
                     move = Engine(board, turn, depth, stats, {
-                        mode, maxTimeMs: request.timeLimitMs, quiescence, maxQuiescencePly, maxCheckEvasionPly,
+                        mode, castling, positionalScale: request.positionalScale, maxTimeMs: request.timeLimitMs, quiescence, maxQuiescencePly, maxCheckEvasionPly,
                         onProgress: snapshot => emit({ type: "progress", mode, depth, trial, stats: snapshot }),
                     });
                     samplesMs.push(stats.elapsedMs);

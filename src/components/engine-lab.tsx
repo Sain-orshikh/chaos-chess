@@ -18,6 +18,7 @@ function squareName(square: number) { return `${"abcdefgh"[square % 8]}${8 - Mat
 function moveName(move: BasicMove | null) {
     if (!move) return "No legal move";
     if (move.kind === "rotate") return `${squareName(move.from)} · rotate`;
+    if (move.kind === "castle") return `${squareName(move.from)} → ${squareName(move.to)} · castle`;
     return `${squareName(move.from)} → ${squareName(move.to)}${move.promotion ? ` = ${move.promotion}` : ""}`;
 }
 type Progress = Extract<BenchmarkMessage, { type: "progress" }>;
