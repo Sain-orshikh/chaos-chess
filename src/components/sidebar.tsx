@@ -65,7 +65,8 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <p className="nav-label">Play</p>
       <nav className="nav" aria-label="Game modes">
         <button disabled><Icon name="flag" />Casual<span className="soon">Soon</span></button>
-        <button disabled title="Ranked is not available"><Icon name="rank" />Ranked<span className="soon">Soon</span></button>
+        <button disabled title="Ranked Normal Chess is coming soon"><Icon name="rank" />Ranked Normal<span className="soon">Soon</span></button>
+        <button disabled title="Ranked Chaos Chess will apply twice the Normal Elo change"><Icon name="rank" />Ranked Chaos · 2× Elo<span className="soon">Soon</span></button>
         <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><Icon name="bot" />Play bot<span className="available" /></Link>
         <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><Icon name="person" />Local 1v1</Link>
       </nav>

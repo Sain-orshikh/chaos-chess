@@ -1,9 +1,8 @@
 import { MATE_SCORE, pieceColor, promotionPieces } from "../utils/pieces";
 import { applyMove } from "./apply_move";
-import LegalMoveGenerate from "./legal_move";
-import { isKingSafe } from "../utils/king_safety";
-import { createCastlingState } from "../utils/types";
-import type { BasicMove, Board, Color, PromotionPiece, CastlingState } from "../utils/types";
+import { legalMovesForPiece as LegalMoveGenerate, kingSafe } from "./rules";
+import { createCastlingState, createStandardState, cloneStandardState } from "../utils/types";
+import type { BasicMove, Board, Color, PromotionPiece, CastlingState, StandardState, Ruleset } from "../utils/types";
 
 export type Square = [number, number];
 export { promotionPieces } from "../utils/pieces";
@@ -20,10 +19,10 @@ export function gameResultScore(status: GameStatus): number | null {
     return null;
 }
 
-export function getGameStatus(board: Board, turn: Color, castling: CastlingState = createCastlingState()): GameStatus {
-    const safe = isKingSafe(board, turn);
+export function getGameStatus(board: Board, turn: Color, castling: CastlingState = createCastlingState(), standard?: StandardState): GameStatus {
+    const safe = kingSafe(board, turn, standard);
     for (let square = 0; square < board.length; square++) {
-        if (pieceColor(board[square]) === turn && LegalMoveGenerate(board, square, castling).length > 0) {
+        if (pieceColor(board[square]) === turn && LegalMoveGenerate(board, square, castling, standard).length > 0) {
             return { kind: safe ? "playing" : "check" };
         }
     }
@@ -35,6 +34,8 @@ export function getGameStatus(board: Board, turn: Color, castling: CastlingState
 
 export type GameState = {
     board: Board;
+    ruleset: Ruleset;
+    standard?: StandardState;
     castling: CastlingState;
     turn: Color;
     selectedSquare: Square | null;
@@ -53,13 +54,14 @@ export type GameState = {
 type GameAction = { type: "click"; square: Square } | { type: "rotate" } | { type: "restart"; board: Board } | { type: "promote"; piece: PromotionPiece }
     | { type: "engine-move"; move: BasicMove; expectedBoard: Board; turn: Color };
 
-export function createGame(board: Board, turn: Color = "white", castling: CastlingState = createCastlingState()): GameState {
+export function createGame(board: Board, turn: Color = "white", castling: CastlingState = createCastlingState(), ruleset: Ruleset = "chaos", standardState: StandardState = createStandardState()): GameState {
     const flags = { ...castling };
-    return { board, castling: flags, turn, selectedSquare: null, lastMove: null, status: getGameStatus(board, turn, flags), pendingPromotion: null };
+    const standard = ruleset === "normal" ? cloneStandardState(standardState) : undefined;
+    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, status: getGameStatus(board, turn, flags, standard), pendingPromotion: null };
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
-    if (action.type === "restart") return createGame(action.board);
+    if (action.type === "restart") return createGame(action.board, "white", createCastlingState(), state.ruleset);
     if (state.pendingPromotion) {
         if (action.type !== "promote" || !promotionPieces.includes(action.piece)) return state;
         const { boardBefore, moves } = state.pendingPromotion;
@@ -73,10 +75,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     if (action.type === "engine-move") {
         // Ignore stale worker results after a restart, and only accept complete legal moves.
         if (action.expectedBoard !== state.board || action.turn !== state.turn || pieceColor(state.board[action.move.from]) !== state.turn) return state;
-        const move = LegalMoveGenerate(state.board, action.move.from, state.castling).find(candidate =>
+        const move = LegalMoveGenerate(state.board, action.move.from, state.castling, state.standard).find(candidate =>
             candidate.to === action.move.to && candidate.kind === action.move.kind &&
             (candidate.kind === "rotate" ? action.move.kind === "rotate" && candidate.piece === action.move.piece
                 : candidate.kind === "castle" ? action.move.kind === "castle" && candidate.rookFrom === action.move.rookFrom && candidate.rookTo === action.move.rookTo
+                : candidate.kind === "en-passant" ? action.move.kind === "en-passant" && candidate.capturedSquare === action.move.capturedSquare
                 : action.move.kind !== "rotate" && candidate.promotion === action.move.promotion));
         return move ? completeMove(state, move) : state;
     }
@@ -98,7 +101,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     if (!selectedSquare) return state;
-    const legalMoves = LegalMoveGenerate(board, selectedSquare[0] * 8 + selectedSquare[1], state.castling);
+    const legalMoves = LegalMoveGenerate(board, selectedSquare[0] * 8 + selectedSquare[1], state.castling, state.standard);
     const move = legalMoves.find((candidate) =>
         action.type === "rotate"
             ? candidate.kind === "rotate"
@@ -132,15 +135,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
 function completeMove(state: GameState, move: BasicMove): GameState {
     const castling = { ...state.castling };
-    const board = applyMove(state.board, move, castling);
+    const standard = state.standard ? cloneStandardState(state.standard) : undefined;
+    const board = applyMove(state.board, move, castling, standard);
     const turn = state.turn === "white" ? "black" : "white";
     return {
         board,
+        ruleset: state.ruleset,
+        standard,
         castling,
         turn,
         selectedSquare: null,
         lastMove: move,
-        status: getGameStatus(board, turn, castling),
+        status: getGameStatus(board, turn, castling, standard),
         pendingPromotion: null,
     };
 }

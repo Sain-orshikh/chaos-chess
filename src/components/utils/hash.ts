@@ -1,10 +1,13 @@
-import type { Board, Color } from "./types";
+import type { Board, Color, StandardState } from "./types";
 
 interface ZobristTable {
     pieces: bigint[][];
     white_to_move: bigint;
     white_castle: bigint;
     black_castle: bigint;
+    normal: bigint;
+    castlingRights: bigint[];
+    enPassant: bigint[];
 }
 
 type HashValue = bigint;
@@ -22,15 +25,26 @@ function zobrist_init(): ZobristTable {
         white_to_move: randomBits64(),
         white_castle: randomBits64(),
         black_castle: randomBits64(),
+        normal: randomBits64(),
+        castlingRights: Array.from({ length: 4 }, randomBits64),
+        enPassant: Array.from({ length: 64 }, randomBits64),
     };
 }
 
 // Every position in this module instance uses the same random keys.
 const table = zobrist_init();
 
-export function zobrist_hash(board: Board, castleWhite: boolean, castleBlack: boolean, turn: Color): HashValue{
+export function zobrist_hash(board: Board, castleWhite: boolean, castleBlack: boolean, turn: Color, standard?: StandardState): HashValue{
 
     let h: HashValue = BigInt(0);
+    if (standard) {
+        h ^= table.normal;
+        const rights = standard.castlingRights;
+        [rights.white.kingSide, rights.white.queenSide, rights.black.kingSide, rights.black.queenSide].forEach((right, i) => {
+            if (right) h ^= table.castlingRights[i];
+        });
+        if (standard.enPassantTarget !== null) h ^= table.enPassant[standard.enPassantTarget];
+    }
 
     if (turn === "white"){
         h ^= table.white_to_move;

@@ -1,9 +1,9 @@
 import { Engine, createSearchStats, SearchLimitError } from "./engine";
 import type { SearchMode, SearchStats } from "./engine";
-import LegalMoveGenerate from "./legal_move";
+import { legalMovesForPiece as LegalMoveGenerate } from "./rules";
 import { pieceColor } from "../utils/pieces";
-import { createCastlingState } from "../utils/types";
-import type { BasicMove, Board, Color, CastlingState } from "../utils/types";
+import { createCastlingState, cloneStandardState } from "../utils/types";
+import type { BasicMove, Board, Color, CastlingState, StandardState } from "../utils/types";
 
 export type BotSettings = {
     mode: SearchMode; maxDepth: number; maxTimeMs: number;
@@ -13,7 +13,7 @@ export const defaultBotSettings: BotSettings = {
     mode: "alpha-beta-ordered", maxDepth: 16, maxTimeMs: 3000,
     quiescence: true, maxQuiescencePly: 8, maxCheckEvasionPly: 8,
 };
-export type BotRequest = { board: Board; turn: Color; settings: BotSettings; castling?: CastlingState; evaluationSeed?: number };
+export type BotRequest = { board: Board; turn: Color; settings: BotSettings; castling?: CastlingState; standard?: StandardState; evaluationSeed?: number };
 export type BotReport = {
     stats: SearchStats; completedDepth: number; searchingDepth: number; requestedDepth: number;
     generationMs: number; legalMoves: number;
@@ -30,12 +30,13 @@ export type BotMessage =
 export function searchBot(request: BotRequest, progress: (report: BotReport) => void = () => {}): BotResult {
     const { board, turn, settings } = request;
     const castling = { ...(request.castling ?? createCastlingState()) };
+    const standard = request.standard ? cloneStandardState(request.standard) : undefined;
     if (!Number.isInteger(settings.maxDepth) || settings.maxDepth < 1 || settings.maxDepth > 16) throw new RangeError("Choose a depth from 1 to 16.");
     if (!Number.isFinite(settings.maxTimeMs) || settings.maxTimeMs < 100 || settings.maxTimeMs > 10000) throw new RangeError("Choose a time limit from 100 to 10000 ms.");
     const start = performance.now();
     const moves: BasicMove[] = [];
     for (let square = 0; square < 64; square++) {
-        if (pieceColor(board[square]) === turn) moves.push(...LegalMoveGenerate(board, square, castling));
+        if (pieceColor(board[square]) === turn) moves.push(...LegalMoveGenerate(board, square, castling, standard));
     }
     const generationMs = performance.now() - start;
     const total = createSearchStats();
@@ -58,7 +59,7 @@ export function searchBot(request: BotRequest, progress: (report: BotReport) => 
         progress(report());
         try {
             const next = Engine(board, turn, depth, current, {
-                ...settings, castling, evaluationSeed: request.evaluationSeed, maxTimeMs: remaining, onProgress: snapshot => progress(report(snapshot)),
+                ...settings, castling, standard, evaluationSeed: request.evaluationSeed, maxTimeMs: remaining, onProgress: snapshot => progress(report(snapshot)),
             });
             move = next;
             completedDepth = depth;

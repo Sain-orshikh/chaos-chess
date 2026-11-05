@@ -1,6 +1,6 @@
-import { offsetsS, offsetsD, createCastlingState } from "../utils/types";
+import { offsetsS, offsetsD, createCastlingState, cloneStandardState } from "../utils/types";
 import { pieceColor, pieceDefinition, pieceIds, horseSteps, diagonalDirections, promotionPieces } from "../utils/pieces";
-import type { BasicMove, Board, Color, CastlingState } from "../utils/types";
+import type { BasicMove, Board, Color, CastlingState, StandardState } from "../utils/types";
 import { findKing, isKingSafe } from "../utils/king_safety";
 import { makeMove } from "./apply_move";
 
@@ -8,23 +8,29 @@ export type UndoInformation = {
     movingPiece: number;
     capturedPiece: number;
     jumpedPiece: number;
+    standard?: StandardState;
+    enPassantPiece?: number;
     castle?: { rookFromPiece: number; rookToPiece: number; castling: CastlingState };
 };
 
 /** Save affected square contents before makeMove changes them. */
-export function saveUndoInformation(board: Board, move: BasicMove, castling: CastlingState = createCastlingState()): UndoInformation {
+export function saveUndoInformation(board: Board, move: BasicMove, castling: CastlingState = createCastlingState(), standard?: StandardState): UndoInformation {
     return {
         movingPiece: board[move.from],
         capturedPiece: board[move.to],
         jumpedPiece: move.kind === "ch" ? board[(move.from + move.to) / 2] : 0,
+        ...(standard ? { standard: cloneStandardState(standard) } : {}),
+        ...(move.kind === "en-passant" ? { enPassantPiece: board[move.capturedSquare] } : {}),
         ...(move.kind === "castle" ? { castle: { rookFromPiece: board[move.rookFrom], rookToPiece: board[move.rookTo], castling: { ...castling } } } : {}),
     };
 }
 
-export function unmakeMove(board: Board, move: BasicMove, undo: UndoInformation, castling: CastlingState = createCastlingState()): void {
+export function unmakeMove(board: Board, move: BasicMove, undo: UndoInformation, castling: CastlingState = createCastlingState(), standard?: StandardState): void {
     board[move.from] = undo.movingPiece;
     board[move.to] = undo.capturedPiece;
     if (move.kind === "ch") board[(move.from + move.to) / 2] = undo.jumpedPiece;
+    if (move.kind === "en-passant") board[move.capturedSquare] = undo.enPassantPiece!;
+    if (standard && undo.standard) Object.assign(standard, cloneStandardState(undo.standard));
     if (move.kind === "castle" && undo.castle) {
         board[move.rookFrom] = undo.castle.rookFromPiece;
         board[move.rookTo] = undo.castle.rookToPiece;
@@ -228,7 +234,7 @@ export default function LegalMoveGenerate(board: Board, from: number, castling: 
     // A promotion choice is part of the move, not a second turn.
     const candidates = Math.abs(piece) === pieceIds.pawn
         ? moves.flatMap((move): BasicMove[] => {
-            if (move.kind !== "rotate" && move.kind !== "castle" && Math.floor(move.to / 8) === (color === "white" ? 0 : 7)) {
+            if (move.kind !== "rotate" && move.kind !== "castle" && move.kind !== "en-passant" && Math.floor(move.to / 8) === (color === "white" ? 0 : 7)) {
                 return promotionPieces.map(promotion => ({ ...move, promotion }));
             }
             return [move];

@@ -2,6 +2,17 @@ export type PieceName = "king" | "queen" | "rook" | "diagonalrook" | "bishop" | 
 export type PieceValue = number
 
 export type Color = "white" | "black";
+export type Ruleset = "chaos" | "normal";
+export type StandardState = {
+    castlingRights: Record<Color, { kingSide: boolean; queenSide: boolean }>;
+    enPassantTarget: number | null;
+};
+export function createStandardState(): StandardState {
+    return { castlingRights: { white: { kingSide: true, queenSide: true }, black: { kingSide: true, queenSide: true } }, enPassantTarget: null };
+}
+export function cloneStandardState(state: StandardState): StandardState {
+    return { castlingRights: { white: { ...state.castlingRights.white }, black: { ...state.castlingRights.black } }, enPassantTarget: state.enPassantTarget };
+}
 export type PromotionPiece = "queen" | "rook" | "bishop" | "knight";
 
 // Squares run from a8 = 0 to h1 = 63; square = row * 8 + col.
@@ -26,6 +37,12 @@ export type BasicMove = {
     kind: "castle";
     rookFrom: number;
     rookTo: number;
+    promotion?: never;
+} | {
+    from: number;
+    to: number;
+    kind: "en-passant";
+    capturedSquare: number;
     promotion?: never;
 };
 

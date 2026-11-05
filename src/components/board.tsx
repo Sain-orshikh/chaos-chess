@@ -5,18 +5,18 @@ import Piece, { BoardPiece } from "./piece";
 import { pieceColor, pieceDefinition, pieceDefinitions } from "./utils/pieces";
 import Icon from "./icon";
 import GameResultModal from "./game-result-modal";
-import type { BasicMove, Board as BoardState, Color } from "./utils/types";
+import type { BasicMove, Board as BoardState, Color, Ruleset } from "./utils/types";
 import BotPanel from "./bot-panel";
 import { defaultBotSettings } from "./common/bot_search";
 import { parseFen } from "./utils/fen_parcer";
-import LegalMoveGenerate from "./common/legal_move";
+import { legalMovesForPiece as LegalMoveGenerate } from "./common/rules";
 import { createGame, gameReducer, promotionPieces } from "./common/game_state";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-export default function Board({ orientation = "white", playerName = "Anonymous", bot = false }: { orientation?: Color; playerName?: string; bot?: boolean }) {
-    const [game, dispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen)));
-    const { board, castling, turn, selectedSquare, lastMove, status, pendingPromotion } = game;
+export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset = "chaos" }: { orientation?: Color; playerName?: string; bot?: boolean; ruleset?: Ruleset }) {
+    const [game, dispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen), "white", undefined, ruleset));
+    const { board, castling, standard, turn, selectedSquare, lastMove, status, pendingPromotion } = game;
     const gameOver = status.kind === "checkmate" || status.kind === "stalemate";
     const botTurn = bot && turn !== orientation;
     const [gameNumber, setGameNumber] = useState(0);
@@ -36,12 +36,12 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
     const statusLabel = useRef<HTMLParagraphElement>(null);
     const wasPromoting = useRef(false);
     const selectedPiece = selectedSquare ? board[selectedSquare[0] * 8 + selectedSquare[1]] : 0;
-    const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare[0] * 8 + selectedSquare[1], castling) : [], [board, selectedSquare, castling]);
+    const legalMoves = useMemo(() => selectedSquare ? LegalMoveGenerate(board, selectedSquare[0] * 8 + selectedSquare[1], castling, standard) : [], [board, selectedSquare, castling, standard]);
     const rotation = legalMoves.find(move => move.kind === "rotate");
     const origin = selectedSquare ? selectedSquare[0] * 8 + selectedSquare[1] : null;
     const selectedDefinition = pieceDefinition(selectedPiece);
     const rotationDefinition = selectedDefinition?.rotatesTo ? pieceDefinitions[selectedDefinition.rotatesTo] : null;
-    const showRookChoice = !!selectedSquare && !!rotationDefinition && movingRook !== origin;
+    const showRookChoice = ruleset === "chaos" && !!selectedSquare && !!rotationDefinition && movingRook !== origin;
     const carriedPiece = pointer.mouse && !showRookChoice ? selectedPiece : null;
     useEffect(() => { if (showRookChoice) rookChoice.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus(); }, [showRookChoice]);
     useEffect(() => {
@@ -73,7 +73,7 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
     }}>
         <div className="board-player"><span className={`player-color ${topColor}`} /><strong>{bot ? "Rooke" : "Player 2"}</strong><span>{topColor === "black" ? "Black" : "White"} pieces</span></div>
         <div className="board-status"><p ref={statusLabel} tabIndex={-1} role="status" aria-live="polite"><i className={`turn-dot ${turn}`} />{statusText}</p><span>{bot ? "vs Rooke" : "Local 1v1"}</span></div>
-        <div className="board-frame"><div className="chess-grid" aria-label="Chaos Chess board" inert={pendingPromotion !== null}>
+        <div className="board-frame"><div className="chess-grid" aria-label={ruleset === "chaos" ? "Chaos Chess board" : "Normal Chess board"} inert={pendingPromotion !== null}>
             {Array.from({ length: 64 }, (_, index) => {
                 const visualR = Math.floor(index / 8), visualC = index % 8;
                 const row = orientation === "black" ? 7 - visualR : visualR, col = orientation === "black" ? 7 - visualC : visualC;
@@ -125,5 +125,5 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
             onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
         />}
         {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
-    </div>{bot && <BotPanel key={gameNumber} board={board} castling={castling} turn={turn} active={botTurn && !gameOver && !pendingPromotion} finished={gameOver} settings={botSettings} onSettings={setBotSettings} onMove={acceptBotMove} />}</div>;
+    </div>{bot && <BotPanel key={gameNumber} board={board} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} finished={gameOver} settings={botSettings} onSettings={setBotSettings} onMove={acceptBotMove} />}</div>;
 }

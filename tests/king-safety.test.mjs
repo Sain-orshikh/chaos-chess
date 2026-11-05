@@ -26,6 +26,9 @@ const { parseFen } = load('../utils/fen_parcer');
 const { applyMove, makeMove } = load('apply_move');
 const { findKing, isKingSafe } = load('../utils/king_safety');
 const generate = load('legal_move').default;
+const generateNormal = load('normal/normal_legal_move').default;
+const normalKingSafe = load('normal/normal_king_safety').isKingSafe;
+const { createStandardState, cloneStandardState, createCastlingState } = load('../utils/types');
 const { Engine: engineSearch, createSearchStats, SearchTimeoutError, QuiescenceLimitError, movePriority } = load('engine');
 // Keep the original static-depth regressions explicit; dedicated quiescence tests opt in below.
 function Engine(board, turn, depth, stats, options = {}) {
@@ -42,6 +45,62 @@ function position(...pieces) {
     for (const [row, col, piece] of pieces) board[row * 8 + col] = piece;
     return board;
 }
+
+test('standard pawns advance forward and double only from a clear starting rank', () => {
+    for (const color of ['white', 'black']) {
+        const sign = color === 'white' ? 1 : -1;
+        const from = color === 'white' ? 52 : 12;
+        const step = color === 'white' ? -8 : 8;
+        const board = position([7, 4, 7], [0, 4, -7]);
+        board[from] = sign;
+        const destinations = () => generateNormal(board, from).map(move => move.to).sort((a, b) => a - b);
+        const before = board.slice();
+        assert.deepEqual(destinations(), [from + step, from + 2 * step].sort((a, b) => a - b));
+        assert.deepEqual(board, before);
+        board[from + 2 * step] = 2 * sign;
+        assert.deepEqual(destinations(), [from + step]);
+        board[from + step] = 2 * sign;
+        assert.deepEqual(destinations(), []);
+        board[from] = 0;
+        board[from + step] = sign;
+        board[from + 2 * step] = 0;
+        assert.deepEqual(generateNormal(board, from + step).map(move => move.to), [from + 2 * step]);
+    }
+});
+
+test('standard pawn captures stay on the board at both file edges', () => {
+    for (const [from, wrapped, capture] of [[32, 23, 25], [39, 32, 30], [24, 31, 33], [31, 40, 38]]) {
+        const sign = from >= 32 ? 1 : -1;
+        const board = position([7, 4, 7], [0, 4, -7]);
+        board[from] = sign;
+        board[wrapped] = -4 * sign;
+        board[capture] = -4 * sign;
+        const moves = generateNormal(board, from);
+        assert.ok(moves.some(move => move.to === capture && move.kind === 'c'));
+        assert.ok(!moves.some(move => move.to === wrapped));
+    }
+});
+
+test('standard safety and legal king moves use diagonal pawn attacks independently of Chaos', () => {
+    for (const sign of [1, -1]) {
+        const color = sign === 1 ? 'white' : 'black';
+        const king = sign === 1 ? 36 : 28;
+        const enemyPawnRowOffset = sign === 1 ? -8 : 8;
+        const board = Array(64).fill(0);
+        board[king] = 7 * sign;
+        board[sign === 1 ? 0 : 63] = -7 * sign;
+        board[king + enemyPawnRowOffset + 1] = -sign;
+        assert.equal(normalKingSafe(board, color), false);
+        assert.equal(isKingSafe(board, color), true);
+        board[king + enemyPawnRowOffset + 1] = 0;
+        board[king + enemyPawnRowOffset] = -sign;
+        assert.equal(normalKingSafe(board, color), true);
+        assert.equal(isKingSafe(board, color), false);
+    }
+    const board = position([5, 4, 7], [0, 0, -7], [3, 5, -1]);
+    assert.ok(!generateNormal(board, 44).some(move => move.to === 36));
+    assert.ok(generate(board, 44).some(move => move.to === 36));
+});
 
 test('shared undo records independently restore nested captures, jumps, and rotations', () => {
     const board = position([7, 4, makePiece('king', 'white')], [0, 4, makePiece('king', 'black')],
@@ -1182,5 +1241,215 @@ test('opening development beats a free rook-form switch for both colors and mult
         const move = engineSearch(board, turn, 2, undefined, { evaluationSeed });
         assert.notEqual(move.kind, 'rotate', `${turn}, seed ${evaluationSeed}`);
         assert.deepEqual(board, before);
+    }
+});
+
+test('standard castling rights are lost on king moves, rook moves, and home-rook captures, and undo restores them', () => {
+    for (const sign of [1, -1]) {
+        const color = sign === 1 ? 'white' : 'black';
+        const home = sign === 1 ? 60 : 4;
+        for (const move of [
+            { from: home, to: home - sign * 8, kind: 'm' },
+            { from: home + 3, to: home + 3 - sign * 8, kind: 'm' },
+            { from: home - 4, to: home - 4 - sign * 8, kind: 'm' },
+        ]) {
+            const board = parseFen('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1');
+            const flags = createCastlingState(), standard = createStandardState();
+            const before = board.slice(), original = cloneStandardState(standard);
+            const undo = saveUndoInformation(board, move, flags, standard);
+            makeMove(board, move, flags, standard);
+            assert.equal(standard.castlingRights[color][move.from === home - 4 ? 'queenSide' : 'kingSide'], false);
+            if (move.from === home) assert.equal(standard.castlingRights[color].queenSide, false);
+            const back = { from: move.to, to: move.from, kind: 'm' };
+            const backUndo = saveUndoInformation(board, back, flags, standard);
+            makeMove(board, back, flags, standard);
+            assert.ok(!generateNormal(board, home, flags, standard).some(m => m.kind === 'castle' &&
+                (move.from === home || m.rookFrom === move.from)));
+            unmakeMove(board, back, backUndo, flags, standard);
+            unmakeMove(board, move, undo, flags, standard);
+            assert.deepEqual(board, before);
+            assert.deepEqual(standard, original);
+        }
+    }
+    const board = parseFen('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1');
+    const standard = createStandardState();
+    makeMove(board, { from: 56, to: 0, kind: 'c' }, createCastlingState(), standard);
+    assert.equal(standard.castlingRights.white.queenSide, false);
+    assert.equal(standard.castlingRights.black.queenSide, false);
+    assert.equal(standard.castlingRights.black.kingSide, true);
+});
+
+test('standard castles test origin, crossing, and destination attacks while Chaos keeps its transit rule', () => {
+    for (const sign of [1, -1]) {
+        const color = sign === 1 ? 'white' : 'black';
+        const home = sign === 1 ? 60 : 4;
+        const board = Array(64).fill(0);
+        board[home] = 7 * sign;
+        board[home + 3] = 4 * sign;
+        board[sign === 1 ? 0 : 56] = -7 * sign;
+        const flags = createCastlingState(), standard = createStandardState();
+        const castles = () => generateNormal(board, home, flags, standard).filter(m => m.kind === 'castle');
+        assert.equal(castles().length, 1);
+        for (const file of [4, 5, 6]) {
+            const attacker = (sign === 1 ? 0 : 56) + file;
+            board[attacker] = -4 * sign;
+            assert.equal(castles().length, 0);
+            if (file === 5) assert.ok(generate(board, home, flags).some(m => m.kind === 'castle'));
+            board[attacker] = 0;
+        }
+        const before = board.slice(), original = cloneStandardState(standard);
+        const move = castles()[0], undo = saveUndoInformation(board, move, flags, standard);
+        makeMove(board, move, flags, standard);
+        assert.equal(board[home + 2], 7 * sign);
+        assert.equal(board[home + 1], 4 * sign);
+        assert.equal(standard.castlingRights[color].kingSide, false);
+        assert.equal(standard.castlingRights[color].queenSide, false);
+        unmakeMove(board, move, undo, flags, standard);
+        assert.deepEqual(board, before);
+        assert.deepEqual(standard, original);
+        assert.equal(flags[color], false);
+    }
+});
+
+test('en passant lasts one reply, captures the passed pawn, and restores board and state on undo', () => {
+    for (const sign of [1, -1]) {
+        const board = parseFen(sign === 1 ? '4k3/3p4/8/4P3/8/8/8/4K3 b - - 0 1' : '4k3/8/8/8/4p3/8/3P4/4K3 w - - 0 1');
+        const from = sign === 1 ? 11 : 51, to = sign === 1 ? 27 : 35;
+        const capturer = sign === 1 ? 28 : 36;
+        const flags = createCastlingState(), standard = createStandardState();
+        makeMove(board, { from, to, kind: 'm' }, flags, standard);
+        assert.equal(standard.enPassantTarget, (from + to) / 2);
+        const before = board.slice(), original = cloneStandardState(standard);
+        const move = generateNormal(board, capturer, flags, standard).find(m => m.kind === 'en-passant');
+        assert.ok(move);
+        assert.equal(movePriority(board, move), 900);
+        const undo = saveUndoInformation(board, move, flags, standard);
+        makeMove(board, move, flags, standard);
+        assert.equal(board[to], 0);
+        assert.equal(board[move.to], sign);
+        assert.equal(standard.enPassantTarget, null);
+        unmakeMove(board, move, undo, flags, standard);
+        assert.deepEqual(board, before);
+        assert.deepEqual(standard, original);
+        const king = sign === 1 ? 60 : 4;
+        makeMove(board, { from: king, to: king + (sign === 1 ? -1 : 1), kind: 'm' }, flags, standard);
+        assert.equal(standard.enPassantTarget, null);
+        assert.ok(!generateNormal(board, capturer, flags, standard).some(m => m.kind === 'en-passant'));
+        assert.ok(!generate(board, capturer, flags).some(m => m.kind === 'en-passant'));
+    }
+});
+
+test('en passant cannot uncover a rook attack on its own king but can remove a checking pawn', () => {
+    const flags = createCastlingState(), standard = createStandardState();
+    standard.enPassantTarget = 22; // g6
+    const pinned = parseFen('k7/8/8/r4PpK/8/8/8/8 w - g6 0 1');
+    assert.ok(!generateNormal(pinned, 29, flags, standard).some(m => m.kind === 'en-passant'));
+    standard.enPassantTarget = 19; // d6
+    const checked = parseFen('k7/8/8/3pP3/4K3/8/8/8 w - d6 0 1');
+    assert.equal(normalKingSafe(checked, 'white'), false);
+    assert.ok(generateNormal(checked, 28, flags, standard).some(m => m.kind === 'en-passant'));
+});
+
+test('standard opening perft matches 20, 400, 8902, and 197281 while restoring every search state', () => {
+    const board = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    const flags = createCastlingState(), standard = createStandardState();
+    const before = board.slice(), original = cloneStandardState(standard);
+    function perft(turn, depth) {
+        if (depth === 0) return 1;
+        let nodes = 0;
+        for (let from = 0; from < 64; from++) if (pieceColor(board[from]) === turn) {
+            for (const move of generateNormal(board, from, flags, standard)) {
+                const undo = saveUndoInformation(board, move, flags, standard);
+                makeMove(board, move, flags, standard);
+                try { nodes += perft(turn === 'white' ? 'black' : 'white', depth - 1); }
+                finally { unmakeMove(board, move, undo, flags, standard); }
+            }
+        }
+        return nodes;
+    }
+    for (const [depth, expected] of [[1, 20], [2, 400], [3, 8902], [4, 197281]]) assert.equal(perft('white', depth), expected);
+    assert.deepEqual(board, before);
+    assert.deepEqual(standard, original);
+});
+
+test('normal game reducer handles en passant, Fool\'s Mate, and restart without changing Chaos defaults', () => {
+    const start = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    const moveGame = (game, from, to) => {
+        const selected = gameReducer(game, { type: 'click', square: [Math.floor(from / 8), from % 8] });
+        const next = gameReducer(selected, { type: 'click', square: [Math.floor(to / 8), to % 8] });
+        assert.notEqual(next.board, game.board);
+        return next;
+    };
+    let game = createGame(start, 'white', undefined, 'normal');
+    for (const [from, to] of [[53, 45], [12, 28], [54, 38], [3, 39]]) game = moveGame(game, from, to);
+    assert.deepEqual(game.status, { kind: 'checkmate', winner: 'black' });
+    game = gameReducer(game, { type: 'restart', board: start });
+    assert.equal(game.ruleset, 'normal');
+    assert.deepEqual(game.standard, createStandardState());
+    for (const [from, to] of [[52, 36], [8, 16], [36, 28], [11, 27], [28, 19]]) game = moveGame(game, from, to);
+    assert.equal(game.lastMove.kind, 'en-passant');
+    assert.equal(game.board[27], 0);
+    assert.equal(game.board[19], 1);
+    assert.equal(game.standard.enPassantTarget, null);
+    assert.equal(createGame(start).standard, undefined);
+    assert.equal(createGame(start).ruleset, 'chaos');
+});
+
+test('normal bot searches and Zobrist keys preserve and distinguish special-move state', () => {
+    const { zobrist_hash } = load('../utils/hash');
+    const board = parseFen('4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1');
+    const standard = createStandardState(), flags = createCastlingState();
+    standard.enPassantTarget = 19;
+    const original = cloneStandardState(standard), before = board.slice();
+    const hash = () => zobrist_hash(board, false, false, 'white', standard);
+    const withEp = hash();
+    assert.notEqual(withEp, zobrist_hash(board, false, false, 'white'));
+    standard.enPassantTarget = null;
+    assert.notEqual(hash(), withEp);
+    standard.enPassantTarget = 19;
+    const keys = new Set([hash()]);
+    for (const color of ['white', 'black']) for (const side of ['kingSide', 'queenSide']) {
+        standard.castlingRights[color][side] = false;
+        keys.add(hash());
+        standard.castlingRights[color][side] = true;
+    }
+    assert.equal(keys.size, 5);
+    const result = searchBot({ board, turn: 'white', castling: flags, standard, settings: { ...defaultBotSettings, maxDepth: 2, maxTimeMs: 1000 } });
+    assert.equal(result.move.kind, 'en-passant');
+    assert.deepEqual(board, before);
+    assert.deepEqual(standard, original);
+    const game = createGame(board, 'white', flags, 'normal', standard);
+    const accepted = gameReducer(game, { type: 'engine-move', move: result.move, expectedBoard: board, turn: 'white' });
+    assert.equal(accepted.board[27], 0);
+    assert.equal(accepted.board[19], 1);
+    const forged = { ...result.move, capturedSquare: 0 };
+    assert.equal(gameReducer(game, { type: 'engine-move', move: forged, expectedBoard: board, turn: 'white' }), game);
+});
+
+test('standard special-move perft matches castling and en passant reference positions', () => {
+    for (const [fen, counts] of [
+        ['r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1', [48, 2039, 97862]],
+        ['8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1', [14, 191, 2812]],
+    ]) {
+        const board = parseFen(fen), before = board.slice();
+        const standard = createStandardState(), flags = createCastlingState();
+        if (fen.split(' ')[2] === '-') for (const color of ['white', 'black']) standard.castlingRights[color] = { kingSide: false, queenSide: false };
+        const original = cloneStandardState(standard);
+        function perft(turn, depth) {
+            if (depth === 0) return 1;
+            let count = 0;
+            for (let from = 0; from < 64; from++) if (pieceColor(board[from]) === turn) {
+                for (const move of generateNormal(board, from, flags, standard)) {
+                    const undo = saveUndoInformation(board, move, flags, standard);
+                    makeMove(board, move, flags, standard);
+                    try { count += perft(turn === 'white' ? 'black' : 'white', depth - 1); }
+                    finally { unmakeMove(board, move, undo, flags, standard); }
+                }
+            }
+            return count;
+        }
+        counts.forEach((count, i) => assert.equal(perft('white', i + 1), count));
+        assert.deepEqual(board, before);
+        assert.deepEqual(standard, original);
     }
 });

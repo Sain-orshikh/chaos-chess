@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import type { BotMessage, BotReport, BotResult, BotSettings } from "./common/bot_search";
-import type { BasicMove, Board, Color, CastlingState } from "./utils/types";
+import type { BasicMove, Board, Color, CastlingState, StandardState } from "./utils/types";
 import { defaultBotSettings } from "./common/bot_search";
 
 type Props = {
-    board: Board; castling: CastlingState; turn: Color; active: boolean; finished: boolean;
+    board: Board; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean; finished: boolean;
     settings: BotSettings; onSettings: (settings: BotSettings) => void;
     onMove: (move: BasicMove, board: Board, turn: Color) => void;
 };
 
-export default function BotPanel({ board, castling, turn, active, finished, settings, onSettings, onMove }: Props) {
+export default function BotPanel({ board, castling, standard, turn, active, finished, settings, onSettings, onMove }: Props) {
     // Stable for every turn/depth in this game; a restart remounts this panel with a new seed.
     const [evaluationSeed] = useState(() => 1 + Math.floor(Math.random() * 0xffffffff));
     const [report, setReport] = useState<BotReport | null>(null);
@@ -39,12 +39,12 @@ export default function BotPanel({ board, castling, turn, active, finished, sett
                 }
             };
             current.onerror = () => { fail("The bot could not finish its search. Try again."); current.terminate(); };
-            current.postMessage({ board, castling, turn, settings: { ...settings, mode: defaultBotSettings.mode, quiescence: true }, evaluationSeed });
+            current.postMessage({ board, castling, standard, turn, settings: { ...settings, mode: defaultBotSettings.mode, quiescence: true }, evaluationSeed });
         } catch {
             queueMicrotask(() => fail("The background search could not start. Try again."));
         }
         return () => { cancelled = true; worker?.terminate(); };
-    }, [active, board, castling, turn, settings, retry, onMove, evaluationSeed]);
+    }, [active, board, castling, standard, turn, settings, retry, onMove, evaluationSeed]);
     function change<K extends keyof BotSettings>(key: K, value: BotSettings[K]) {
         setFailure(null);
         onSettings({ ...settings, [key]: value });
