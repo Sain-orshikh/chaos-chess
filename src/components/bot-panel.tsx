@@ -6,13 +6,14 @@ import type { BasicMove, Board, Color, CastlingState, StandardState } from "./ut
 import { defaultBotSettings } from "./common/bot_search";
 
 type Props = {
-    board: Board; halfmoveClock: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
+    evaluationSeed?: number; board: Board; halfmoveClock: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
     onMove: (move: BasicMove, board: Board, turn: Color) => void;
 };
 
-export default function BotPanel({ board, halfmoveClock, castling, standard, turn, active, onMove }: Props) {
+export default function BotPanel({ board, halfmoveClock, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
     // Stable for every turn/depth in this game; a restart remounts this panel with a new seed.
-    const [evaluationSeed] = useState(() => 1 + Math.floor(Math.random() * 0xffffffff));
+    const [randomSeed] = useState(() => 1 + Math.floor(Math.random() * 0xffffffff));
+    const evaluationSeed = savedSeed ?? randomSeed;
     const [failure, setFailure] = useState<{ board: Board; message: string } | null>(null);
     const [retry, setRetry] = useState(0);
     const error = failure?.board === board ? failure.message : "";

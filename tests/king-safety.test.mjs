@@ -1602,3 +1602,60 @@ test('analysis promotion is one undo step and FEN retains rights, en passant, an
     assert.equal(formatFen(chaos.board, chaos.turn, undefined, chaos.halfmoveClock), chaos.fen);
     assert.throws(() => parseBenchmarkFen(chaos.fen, 'normal'));
 });
+
+const { encodeMatch, decodeMatch, MATCH_SAVE_MS, matchStorageKey } = load('saved_match');
+const saveTime = 1700000000000;
+function savedGame(game) {
+    return { game, orientation: 'black', evaluationSeed: 42, expiresAt: saveTime + MATCH_SAVE_MS };
+}
+
+test('match saves restore standard state, side, clock, and bot seed with a strict three-hour expiry', () => {
+    let game = createGame(parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'), 'white', undefined, 'normal');
+    game = gameReducer(game, { type: 'click', square: [6, 4] });
+    game = gameReducer(game, { type: 'click', square: [4, 4] });
+    const raw = encodeMatch(savedGame(game));
+    const restored = decodeMatch(raw, saveTime + MATCH_SAVE_MS - 1);
+    assert.deepEqual(restored.game.board, game.board);
+    assert.deepEqual(restored.game.standard, game.standard);
+    assert.equal(restored.game.standard.enPassantTarget, 44);
+    assert.equal(restored.game.turn, 'black');
+    assert.equal(restored.game.halfmoveClock, 0);
+    assert.equal(restored.orientation, 'black');
+    assert.equal(restored.evaluationSeed, 42);
+    assert.equal(restored.game.selectedSquare, null);
+    assert.equal(decodeMatch(raw, saveTime + MATCH_SAVE_MS), null);
+    assert.notEqual(matchStorageKey(true), matchStorageKey(false));
+});
+
+test('match saves preserve Chaos castling history, draw offers and the quiet-move counter', () => {
+    const game = createGame(parseFen('4k3/7p/8/8/8/8/P7/4K3 w - - 149 1'), 'white', { white: true, black: false }, 'chaos', undefined, 149);
+    game.drawOffer = 'black';
+    const restored = decodeMatch(encodeMatch(savedGame(game)), saveTime);
+    assert.deepEqual(restored.game.castling, { white: true, black: false });
+    assert.equal(restored.game.drawOffer, 'black');
+    assert.equal(restored.game.halfmoveClock, 149);
+});
+
+test('match saves rebuild a pending promotion and allow its choice to complete legally', () => {
+    let game = createGame(parseFen('4k3/P7/8/8/8/8/7p/4K3 w - - 0 1'), 'white', undefined, 'normal');
+    game = gameReducer(game, { type: 'click', square: [1, 0] });
+    game = gameReducer(game, { type: 'click', square: [0, 0] });
+    assert.ok(game.pendingPromotion);
+    const restored = decodeMatch(encodeMatch(savedGame(game)), saveTime);
+    assert.ok(restored.game.pendingPromotion);
+    assert.deepEqual(restored.game.board, game.board);
+    assert.deepEqual(restored.game.pendingPromotion.moves, game.pendingPromotion.moves);
+    const promoted = gameReducer(restored.game, { type: 'promote', piece: 'queen' });
+    assert.equal(promoted.board[0], pieceIds.queen);
+    assert.equal(promoted.turn, 'black');
+});
+
+test('match restore ignores corrupt, incompatible and impossible saves', () => {
+    assert.equal(decodeMatch('{broken', saveTime), null);
+    assert.equal(decodeMatch('{}', saveTime), null);
+    const game = createGame(parseFen('4k3/7p/8/8/8/8/P7/4K3 w - - 0 1'));
+    const data = JSON.parse(encodeMatch(savedGame(game)));
+    for (const change of [{ version: 2 }, { board: [] }, { board: Array(64).fill(0) }, { turn: 'purple' }, { halfmoveClock: -1 }, { expiresAt: saveTime + MATCH_SAVE_MS + 1 }, { promotion: { from: 999, to: 0 } }]) {
+        assert.equal(decodeMatch(JSON.stringify({ ...data, ...change }), saveTime), null);
+    }
+});

@@ -6,6 +6,8 @@ const paths = {
   bot: "M8 4h8v3H8zM5 8h14v12H5zM2 12h3m14 0h3M9 12v2m6-2v2m-6 3h6M12 1v3",
   flag: "M5 21V3m0 1h14l-3 4 3 4H5",
   rank: "m4 8 8-5 8 5-8 5-8-5zm0 5 8 5 8-5M4 18l8 5 8-5",
+  classic: "M9 3h6m-3-2v6M8 8h8l2 4-3 6H9l-3-6 2-4zm0 10v3h8v-3M6 22h12",
+  lab: "M9 2h6m-5 0v7l-6 10c-1 2 0 3 2 3h12c2 0 3-1 2-3L14 9V2M7 15h10M9 18h1m4 1h1",
   chaos: "m13 2-8 12h7l-1 8 8-12h-7l1-8z",
   book: "M12 5v15M3 4h5l4 2 4-2h5v15h-5l-4 2-4-2H3z",
   trophy: "M7 3h10v6a5 5 0 0 1-10 0V3zM7 5H3v4l5 3m9-7h4v4l-5 3M12 14v6m-5 1h10",

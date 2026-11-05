@@ -1603,3 +1603,9 @@ h1, h2, h3 {
 .rooke-avatar { width: 24px; height: 32px; flex-shrink: 0; object-fit: contain; }
 
 .bot-rating { margin-left: 0.25em; color: var(--muted); font-size: 0.8em; font-weight: 400; white-space: nowrap; }
+
+.resume-match { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 16px; margin: 24px 0; border: 1px solid var(--red); }
+.resume-match p { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+
+.nav-symbol { width: 20px; height: 24px; flex-shrink: 0; object-fit: contain; color: var(--foreground); }
+.nav-brand-symbol { filter: brightness(0) invert(1); }

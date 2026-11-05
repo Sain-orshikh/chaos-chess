@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Icon from "./icon";
+import NavIcon from "./nav-icon";
 import { useAuth } from "./auth-provider";
 import AccountDialog, { type AccountAction } from "./account-dialog";
 
@@ -64,16 +65,16 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <div className="profile-stats"><div><strong>{user?.elo?.toLocaleString() ?? "—"}</strong><span>Elo rating</span></div><div><strong>{user?.matches?.toLocaleString() ?? "—"}</strong><span>Matches</span></div><div><strong>{user?.wins?.toLocaleString() ?? "—"}</strong><span>Wins</span></div></div>
       <p className="nav-label">Play</p>
       <nav className="nav" aria-label="Game modes">
-        <button disabled title="Chaos multiplayer is coming soon"><Icon name="flag" />Chaos<span className="soon">Soon</span></button>
-        <button disabled title="Classic Chess multiplayer is coming soon"><Icon name="rank" />Classic Chess<span className="soon">Soon</span></button>
-        <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><Icon name="bot" />Play bot<span className="available" /></Link>
-        <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><Icon name="person" />Local 1v1</Link>
+        <button disabled title="Chaos multiplayer is coming soon"><NavIcon name="chaos" />Chaos<span className="soon">Soon</span></button>
+        <button disabled title="Classic Chess multiplayer is coming soon"><NavIcon name="classic" />Classic Chess<span className="soon">Soon</span></button>
+        <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><NavIcon name="bot" />Play bot<span className="available" /></Link>
+        <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><NavIcon name="local" />Local 1v1</Link>
       </nav>
       <p className="nav-label section-gap">Explore</p>
       <nav className="nav" aria-label="Explore">
-        <Link href="/encyclopedia" className={pathname === "/encyclopedia" ? "active" : ""} aria-current={pathname === "/encyclopedia" ? "page" : undefined} onClick={onClose}><Icon name="book" />Encyclopedia</Link>
-        <Link href="/engine-lab" className={pathname === "/engine-lab" ? "active" : ""} aria-current={pathname === "/engine-lab" ? "page" : undefined} onClick={onClose}><Icon name="rank" />Engine lab</Link>
-        <button disabled><Icon name="trophy" />Leaderboard<span className="soon">Soon</span></button>
+        <Link href="/encyclopedia" className={pathname === "/encyclopedia" ? "active" : ""} aria-current={pathname === "/encyclopedia" ? "page" : undefined} onClick={onClose}><NavIcon name="book" />Encyclopedia</Link>
+        <Link href="/engine-lab" className={pathname === "/engine-lab" ? "active" : ""} aria-current={pathname === "/engine-lab" ? "page" : undefined} onClick={onClose}><NavIcon name="lab" />Engine lab</Link>
+        <button disabled><NavIcon name="trophy" />Leaderboard<span className="soon">Soon</span></button>
       </nav>
       <footer className="side-footer"><small><b>●</b> Early access<span>v.01</span></small><small>Chaos Chess © 2026</small></footer>
     </aside>

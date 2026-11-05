@@ -20,10 +20,10 @@ const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 type Props = {
     orientation?: Color; playerName?: string; bot?: boolean; ruleset?: Ruleset;
     game?: GameState; onAction?: Dispatch<GameAction>; locked?: boolean; analysis?: boolean;
-    highlightedMove?: BasicMove | null; onSetup?: () => void;
+    highlightedMove?: BasicMove | null; onSetup?: () => void; evaluationSeed?: number;
 };
 
-export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset: initialRuleset = "chaos", game: controlledGame, onAction, locked = false, analysis = false, highlightedMove, onSetup }: Props) {
+export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset: initialRuleset = "chaos", game: controlledGame, onAction, locked = false, analysis = false, highlightedMove, onSetup, evaluationSeed }: Props) {
     const [localGame, localDispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen), "white", undefined, initialRuleset));
     const game = controlledGame ?? localGame;
     const dispatch = onAction ?? localDispatch;
@@ -143,5 +143,5 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
             onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
         />}
         {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
-    </div>{bot && <BotPanel key={gameNumber} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
+    </div>{bot && <BotPanel key={gameNumber} evaluationSeed={evaluationSeed} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
 }
