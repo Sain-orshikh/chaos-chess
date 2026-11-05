@@ -443,7 +443,7 @@ test('rotation also evaluates whether the opponent is now in check', () => {
 test('restart clears the result, last move, and selection and starts White', () => {
     const ended = createGame(position([0, 0, makePiece('king', 'black')], [2, 1, makePiece('knight', 'white')], [7, 7, makePiece('king', 'white')]), 'black');
     assert.equal(ended.status.kind, 'stalemate');
-    const board = position([0, 0, makePiece('king', 'black')], [7, 7, makePiece('king', 'white')]);
+    const board = position([0, 0, makePiece('king', 'black')], [1, 0, makePiece('pawn', 'black')], [7, 7, makePiece('king', 'white')]);
     const next = gameReducer(ended, { type: 'restart', board });
     assert.deepEqual(next, createGame(board));
     assert.equal(next.turn, 'white');
@@ -485,7 +485,7 @@ test('allied jumps preserve king safety, including jumping over your own king', 
     assert.ok(generate(blocked, 42).some((m) => m.to === 28 && m.kind === 'm'));
     const pinned = position([4, 7, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 3, makePiece('bishop', 'white')], [3, 2, makePiece('pawn', 'white')], [4, 0, makePiece('rook', 'black')]);
     assert.ok(!generate(pinned, 35).some((m) => m.to === 17));
-    const kingJump = position([3, 3, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [4, 4, makePiece('bishop', 'white')]);
+    const kingJump = position([3, 3, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [1, 0, makePiece('pawn', 'black')], [4, 4, makePiece('bishop', 'white')]);
     const next = click(click(createGame(kingJump), 4, 4), 2, 2);
     assert.equal(next.board[3 * 8 + 3], makePiece('king', 'white'));
     assert.equal(next.board[2 * 8 + 2], makePiece('bishop', 'white'));
@@ -682,7 +682,7 @@ test('minimax returns null for finished positions and rejects invalid depths', (
 
 
 test('search counters count leaves, edges, and cutoffs and reset between searches', () => {
-    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')]);
+    const board = position([7, 0, makePiece('king', 'white')], [0, 7, makePiece('king', 'black')], [1, 7, makePiece('pawn', 'black')]);
     const stats = createSearchStats();
     const move = Engine(board, 'white', 2, stats, { positionalScale: 0 });
     assert.deepEqual(Engine(board, 'white', 2, undefined, { positionalScale: 0 }), move);
@@ -719,7 +719,7 @@ test('benchmark FEN validation accepts presets and rejects unsafe custom inputs'
 });
 
 test('plain minimax and alpha-beta agree while pruning reduces evaluations', () => {
-    const board = parseFen('7k/8/8/8/8/8/8/K7');
+    const board = parseFen('7k/7p/8/8/8/8/8/K7');
     const plain = createSearchStats(), pruned = createSearchStats();
     assert.deepEqual(Engine(board, 'white', 2, plain, { mode: 'minimax', positionalScale: 0 }), Engine(board, 'white', 2, pruned, { mode: 'alpha-beta', positionalScale: 0 }));
     assert.equal(plain.positionsEvaluated, 9);
@@ -739,7 +739,7 @@ test('search deadline unwinds every move and retains partial statistics', () => 
 
 test('benchmark runner emits generation measurements and complete comparisons', () => {
     const messages = [];
-    runBenchmark({ fen: '7k/8/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000, quiescence: false, positionalScale: 0 }, message => messages.push(message));
+    runBenchmark({ fen: '7k/7p/8/8/8/8/8/K7 w - - 0 1', modes: ['minimax', 'alpha-beta'], maxDepth: 2, repetitions: 1, timeLimitMs: 1000, quiescence: false, positionalScale: 0 }, message => messages.push(message));
     assert.equal(messages[0].type, 'generation');
     assert.equal(messages[0].legalMoves, 3);
     assert.ok(messages[0].microseconds > 0);
@@ -872,7 +872,7 @@ for (const color of ['white', 'black']) {
 }
 
 test('a quiet quiescence position evaluates normally rather than becoming a false stalemate', () => {
-    const board = parseFen('7k/8/8/8/8/8/8/K7'), before = board.slice(), stats = createSearchStats();
+    const board = parseFen('7k/7p/8/8/8/8/8/K7'), before = board.slice(), stats = createSearchStats();
     assert.ok(engineSearch(board, 'white', 1, stats));
     assert.equal(stats.quiescenceNodes, 3);
     assert.equal(stats.quiescenceMoves, 0);
@@ -1452,4 +1452,153 @@ test('standard special-move perft matches castling and en passant reference posi
         assert.deepEqual(board, before);
         assert.deepEqual(standard, original);
     }
+});
+
+test('normal material and move ordering use standard values while Chaos stays unchanged', () => {
+    for (const [name, value] of [['pawn', 100], ['knight', 320], ['bishop', 330], ['rook', 500], ['queen', 900], ['king', 0]]) {
+        assert.equal(pieceValue(makePiece(name, 'white'), 'normal'), value);
+        assert.equal(pieceValue(makePiece(name, 'black'), 'normal'), value ? -value : 0);
+    }
+    assert.equal(pieceValue(pieceIds.knight), 400);
+    assert.equal(pieceValue(pieceIds.bishop), 200);
+    const board = parseFen('7k/8/3b4/8/3Q1n2/8/8/K7 w - - 0 1');
+    const options = { positionalScale: 0, checkmateEvalScale: 0, quiescence: false };
+    assert.equal(Engine(board, 'white', 1, undefined, options).to, 37);
+    assert.equal(Engine(board, 'white', 1, undefined, { ...options, standard: createStandardState() }).to, 19);
+    assert.ok(movePriority(board, { from: 35, to: 19, kind: 'c' }, 'normal') > movePriority(board, { from: 35, to: 37, kind: 'c' }, 'normal'));
+});
+
+test('insufficient material differs between Normal and Chaos and respects bishop square colors', () => {
+    const { hasInsufficientMaterial } = load('draw_rules');
+    const cases = [
+        ['7k/8/8/8/8/8/8/K7', true, true],
+        ['7k/8/8/8/8/8/8/KB6', true, true],
+        ['7k/8/8/8/8/8/8/KN6', true, false],
+        ['6bk/8/8/8/8/8/8/KB6', true, true],
+        ['5b1k/8/8/8/8/8/8/KB6', false, false],
+        ['7k/8/8/8/8/8/8/KNN5', false, false],
+        ['6nk/8/8/8/8/8/8/KN6', false, false],
+        ['7k/8/8/8/8/8/P7/K7', false, false],
+        ['7k/8/8/8/8/8/8/KR6', false, false],
+    ];
+    for (const [fen, normal, chaos] of cases) {
+        const board = parseFen(fen);
+        assert.equal(hasInsufficientMaterial(board, 'normal'), normal, fen);
+        assert.equal(hasInsufficientMaterial(board, 'chaos'), chaos, fen);
+    }
+    // This is mate in Chaos, but K+N vs K is a dead position in Normal.
+    const mate = position([0, 2, 7], [0, 0, -7], [0, 1, 2]);
+    assert.deepEqual(getGameStatus(mate, 'black'), { kind: 'checkmate', winner: 'white' });
+    assert.deepEqual(getGameStatus(mate, 'black', undefined, createStandardState()), { kind: 'draw', reason: 'insufficient-material' });
+});
+
+test('automatic 75-move draw requires 150 plies and ends both rule variants', () => {
+    for (const ruleset of ['normal', 'chaos']) {
+        let game = createGame(parseFen('6rk/8/8/8/8/8/8/KR6'), 'white', undefined, ruleset);
+        const cycle = [[57, 49], [6, 14], [49, 57], [14, 6]];
+        for (let ply = 0; ply < 150; ply++) {
+            const [from, to] = cycle[ply % 4];
+            const move = { from, to, kind: 'm' };
+            game = gameReducer(game, { type: 'engine-move', move, expectedBoard: game.board, turn: game.turn });
+            assert.equal(game.halfmoveClock, ply + 1);
+            if (ply < 149) assert.equal(game.status.kind, 'playing');
+        }
+        assert.deepEqual(game.status, { kind: 'draw', reason: 'seventy-five-moves' });
+        assert.equal(gameResultScore(game.status), 0);
+        assert.equal(gameReducer(game, { type: 'click', square: [7, 1] }), game);
+    }
+});
+
+test('pawn moves, promotions, all captures reset the draw clock; castling and rotation do not', () => {
+    const { nextHalfmoveClock } = load('draw_rules');
+    const board = Array(64).fill(0);
+    board[52] = 1; board[28] = 1; board[8] = 1; board[42] = 3; board[56] = 4; board[60] = 7;
+    for (const move of [
+        { from: 52, to: 36, kind: 'm' },
+        { from: 8, to: 0, kind: 'm', promotion: 'queen' },
+        { from: 42, to: 28, kind: 'ch' },
+        { from: 56, to: 48, kind: 'c' },
+        { from: 28, to: 19, kind: 'en-passant', capturedSquare: 27 },
+    ]) assert.equal(nextHalfmoveClock(board, move, 149), 0);
+    assert.equal(nextHalfmoveClock(board, { from: 56, to: 48, kind: 'm' }, 149), 150);
+    assert.equal(nextHalfmoveClock(board, { from: 56, to: 56, kind: 'rotate', piece: 'diagonalrook' }, 149), 150);
+    assert.equal(nextHalfmoveClock(board, { from: 60, to: 62, kind: 'castle', rookFrom: 63, rookTo: 61 }, 149), 150);
+    const game = createGame(parseFen('6rk/8/8/8/8/8/P7/KR6'), 'white', undefined, 'normal', createStandardState(), 149);
+    const moved = gameReducer(game, { type: 'engine-move', move: { from: 48, to: 40, kind: 'm' }, expectedBoard: game.board, turn: 'white' });
+    assert.equal(moved.halfmoveClock, 0);
+    assert.equal(moved.status.kind, 'playing');
+});
+
+test('checkmate takes precedence over the 75-move draw on the final ply', () => {
+    const game = createGame(parseFen('7k/8/5KQ1/8/8/8/8/8'), 'white', undefined, 'normal', createStandardState(), 149);
+    const next = gameReducer(game, { type: 'engine-move', move: { from: 22, to: 14, kind: 'm' }, expectedBoard: game.board, turn: 'white' });
+    assert.equal(next.halfmoveClock, 150);
+    assert.deepEqual(next.status, { kind: 'checkmate', winner: 'white' });
+    assert.deepEqual(Engine(game.board, 'white', 1, undefined, { standard: game.standard, halfmoveClock: 149 }), { from: 22, to: 14, kind: 'm' });
+});
+
+test('search stops at automatic draws and the hash distinguishes halfmove clocks', () => {
+    const { zobrist_hash } = load('../utils/hash');
+    const board = parseFen('6rk/8/8/8/8/8/8/KR6');
+    const standard = createStandardState();
+    const stats = createSearchStats();
+    assert.equal(Engine(board, 'white', 2, stats, { standard, halfmoveClock: 150 }), null);
+    assert.equal(stats.terminalPositions, 1);
+    assert.equal(stats.materialEvaluations, 0);
+    assert.notEqual(zobrist_hash(board, false, false, 'white', standard, 0), zobrist_hash(board, false, false, 'white', standard, 149));
+    assert.equal(searchBot({ board, turn: 'white', standard, halfmoveClock: 150, settings: defaultBotSettings }).move, null);
+    const kings = parseFen('7k/8/8/8/8/8/8/K7');
+    assert.equal(Engine(kings, 'white', 2), null);
+    assert.equal(searchBot({ board: kings, turn: 'white', settings: defaultBotSettings }).move, null);
+});
+
+test('resignation and local draw agreements end games and ignore stale engine results', () => {
+    const board = parseFen('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+    const initial = createGame(board);
+    const offered = gameReducer(initial, { type: 'offer-draw', color: 'white' });
+    assert.equal(gameReducer(offered, { type: 'respond-draw', color: 'white', accept: true }), offered);
+    const declined = gameReducer(offered, { type: 'respond-draw', color: 'black', accept: false });
+    assert.equal(declined.status.kind, 'playing'); assert.equal(declined.drawOffer, null);
+    const drawn = gameReducer(offered, { type: 'respond-draw', color: 'black', accept: true });
+    assert.deepEqual(drawn.status, { kind: 'draw', reason: 'agreement' });
+    const resigned = gameReducer(initial, { type: 'resign', color: 'white' });
+    assert.deepEqual(resigned.status, { kind: 'resigned', winner: 'black' });
+    for (const ended of [drawn, resigned]) {
+        assert.equal(gameReducer(ended, { type: 'engine-move', move: { from: 52, to: 43, kind: 'm' }, expectedBoard: board, turn: 'white' }), ended);
+        const reset = gameReducer(ended, { type: 'restart', board });
+        assert.equal(reset.status.kind, 'playing'); assert.equal(reset.halfmoveClock, 0); assert.equal(reset.drawOffer, null);
+    }
+});
+
+test('analysis sessions can play consecutive engine moves, undo automatic draws and reset history', () => {
+    const { analysisReducer } = load('analysis_session');
+    const initial = createGame(parseFen('6rk/8/8/8/8/8/8/KR6'), 'white', undefined, 'normal', createStandardState(), 148);
+    let session = { game: initial, history: [] };
+    for (const [from, to] of [[57, 49], [6, 14]]) {
+        session = analysisReducer(session, { type: 'game', action: { type: 'engine-move', move: { from, to, kind: 'm' }, expectedBoard: session.game.board, turn: session.game.turn } });
+    }
+    assert.equal(session.history.length, 2); assert.equal(session.game.halfmoveClock, 150);
+    assert.equal(session.game.status.kind, 'draw');
+    session = analysisReducer(session, { type: 'undo' });
+    assert.equal(session.game.halfmoveClock, 149); assert.equal(session.game.status.kind, 'playing');
+    session = analysisReducer(session, { type: 'undo' });
+    assert.deepEqual(session.game, initial);
+    assert.deepEqual(analysisReducer(session, { type: 'load', game: initial }), { game: initial, history: [] });
+});
+
+test('analysis promotion is one undo step and FEN retains rights, en passant, and the halfmove clock', () => {
+    const { analysisReducer } = load('analysis_session');
+    const { formatFen } = load('../utils/fen_parcer');
+    const initial = createGame(parseFen('7k/2P5/8/8/8/8/8/K7'), 'white', undefined, 'normal');
+    let session = { game: initial, history: [] };
+    for (const action of [{ type: 'click', square: [1, 2] }, { type: 'click', square: [0, 2] }, { type: 'promote', piece: 'queen' }]) session = analysisReducer(session, { type: 'game', action });
+    assert.equal(session.history.length, 1); assert.equal(session.game.board[2], pieceIds.queen);
+    session = analysisReducer(session, { type: 'undo' });
+    assert.equal(session.game.board[10], pieceIds.pawn); assert.equal(session.game.pendingPromotion, null);
+    const fen = 'r3k2r/8/8/3pP3/8/8/8/R3K2R w Kq d6 147 1';
+    const parsed = parseBenchmarkFen(fen, 'normal');
+    assert.equal(formatFen(parsed.board, parsed.turn, parsed.standard, parsed.halfmoveClock), fen);
+    const chaos = parseBenchmarkFen('7k/8/8/8/8/8/8/KD6 w - - 22 1');
+    assert.equal(formatFen(chaos.board, chaos.turn, undefined, chaos.halfmoveClock), chaos.fen);
+    assert.throws(() => parseBenchmarkFen(chaos.fen, 'normal'));
 });

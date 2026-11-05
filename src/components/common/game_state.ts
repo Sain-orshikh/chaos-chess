@@ -2,6 +2,8 @@ import { MATE_SCORE, pieceColor, promotionPieces } from "../utils/pieces";
 import { applyMove } from "./apply_move";
 import { legalMovesForPiece as LegalMoveGenerate, kingSafe } from "./rules";
 import { createCastlingState, createStandardState, cloneStandardState } from "../utils/types";
+import { automaticDrawReason, nextHalfmoveClock } from "./draw_rules";
+import type { AutomaticDrawReason } from "./draw_rules";
 import type { BasicMove, Board, Color, PromotionPiece, CastlingState, StandardState, Ruleset } from "../utils/types";
 
 export type Square = [number, number];
@@ -10,20 +12,28 @@ export type { PromotionPiece } from "../utils/types";
 export type GameStatus =
     | { kind: "playing" | "check" }
     | { kind: "checkmate"; winner: Color }
+    | { kind: "resigned"; winner: Color }
+    | { kind: "draw"; reason: "agreement" | AutomaticDrawReason }
     | { kind: "stalemate" };
+
+export type FinishedStatus = Extract<GameStatus, { kind: "checkmate" | "resigned" | "draw" | "stalemate" }>;
+export function isGameOver(status: GameStatus): status is FinishedStatus {
+    return status.kind !== "playing" && status.kind !== "check";
+}
 
 /** Search must use terminal results before material evaluation. Null means play continues. */
 export function gameResultScore(status: GameStatus): number | null {
-    if (status.kind === "checkmate") return status.winner === "white" ? MATE_SCORE : -MATE_SCORE;
-    if (status.kind === "stalemate") return 0;
+    if (status.kind === "checkmate" || status.kind === "resigned") return status.winner === "white" ? MATE_SCORE : -MATE_SCORE;
+    if (status.kind === "stalemate" || status.kind === "draw") return 0;
     return null;
 }
 
-export function getGameStatus(board: Board, turn: Color, castling: CastlingState = createCastlingState(), standard?: StandardState): GameStatus {
+export function getGameStatus(board: Board, turn: Color, castling: CastlingState = createCastlingState(), standard?: StandardState, halfmoveClock = 0): GameStatus {
     const safe = kingSafe(board, turn, standard);
     for (let square = 0; square < board.length; square++) {
         if (pieceColor(board[square]) === turn && LegalMoveGenerate(board, square, castling, standard).length > 0) {
-            return { kind: safe ? "playing" : "check" };
+            const draw = automaticDrawReason(board, standard ? "normal" : "chaos", halfmoveClock);
+            return draw ? { kind: "draw", reason: draw } : { kind: safe ? "playing" : "check" };
         }
     }
 
@@ -41,6 +51,8 @@ export type GameState = {
     selectedSquare: Square | null;
     lastMove: BasicMove | null;
     status: GameStatus;
+    drawOffer: Color | null;
+    halfmoveClock: number;
     pendingPromotion: {
         square: Square;
         color: Color;
@@ -51,17 +63,34 @@ export type GameState = {
 
 
 
-type GameAction = { type: "click"; square: Square } | { type: "rotate" } | { type: "restart"; board: Board } | { type: "promote"; piece: PromotionPiece }
+export type GameAction = { type: "click"; square: Square } | { type: "rotate" } | { type: "restart"; board: Board } | { type: "promote"; piece: PromotionPiece }
+    | { type: "resign"; color: Color } | { type: "offer-draw"; color: Color }
+    | { type: "respond-draw"; color: Color; accept: boolean }
     | { type: "engine-move"; move: BasicMove; expectedBoard: Board; turn: Color };
 
-export function createGame(board: Board, turn: Color = "white", castling: CastlingState = createCastlingState(), ruleset: Ruleset = "chaos", standardState: StandardState = createStandardState()): GameState {
+export function createGame(board: Board, turn: Color = "white", castling: CastlingState = createCastlingState(), ruleset: Ruleset = "chaos", standardState: StandardState = createStandardState(), halfmoveClock = 0): GameState {
     const flags = { ...castling };
     const standard = ruleset === "normal" ? cloneStandardState(standardState) : undefined;
-    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, status: getGameStatus(board, turn, flags, standard), pendingPromotion: null };
+    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, drawOffer: null, pendingPromotion: null };
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
     if (action.type === "restart") return createGame(action.board, "white", createCastlingState(), state.ruleset);
+    if (isGameOver(state.status)) return state;
+    if (action.type === "resign") return {
+        ...state, board: state.pendingPromotion?.boardBefore ?? state.board,
+        status: { kind: "resigned", winner: action.color === "white" ? "black" : "white" },
+        selectedSquare: null, pendingPromotion: null, drawOffer: null,
+    };
+    if (action.type === "offer-draw") {
+        if (state.pendingPromotion || state.drawOffer) return state;
+        return { ...state, drawOffer: action.color, selectedSquare: null };
+    }
+    if (action.type === "respond-draw") {
+        if (!state.drawOffer || action.color === state.drawOffer) return state;
+        return { ...state, drawOffer: null, selectedSquare: null,
+            status: action.accept ? { kind: "draw", reason: "agreement" } : state.status };
+    }
     if (state.pendingPromotion) {
         if (action.type !== "promote" || !promotionPieces.includes(action.piece)) return state;
         const { boardBefore, moves } = state.pendingPromotion;
@@ -70,7 +99,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         return completeMove({ ...state, board: boardBefore }, move);
     }
     if (action.type === "promote") return state;
-    if (state.status.kind === "checkmate" || state.status.kind === "stalemate") return state;
 
     if (action.type === "engine-move") {
         // Ignore stale worker results after a restart, and only accept complete legal moves.
@@ -136,6 +164,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 function completeMove(state: GameState, move: BasicMove): GameState {
     const castling = { ...state.castling };
     const standard = state.standard ? cloneStandardState(state.standard) : undefined;
+    const halfmoveClock = nextHalfmoveClock(state.board, move, state.halfmoveClock);
     const board = applyMove(state.board, move, castling, standard);
     const turn = state.turn === "white" ? "black" : "white";
     return {
@@ -146,7 +175,9 @@ function completeMove(state: GameState, move: BasicMove): GameState {
         turn,
         selectedSquare: null,
         lastMove: move,
-        status: getGameStatus(board, turn, castling, standard),
+        status: getGameStatus(board, turn, castling, standard, halfmoveClock),
+        halfmoveClock,
+        drawOffer: state.drawOffer === turn ? null : state.drawOffer,
         pendingPromotion: null,
     };
 }

@@ -1,4 +1,4 @@
-import type { Color, PieceName, PieceValue } from "./types";
+import type { Color, PieceName, PieceValue, Ruleset } from "./types";
 
 // Scores use White's perspective: positive favors White, negative favors Black.
 // A mate score exceeds any material imbalance in a valid position (one king per side).
@@ -18,6 +18,7 @@ type Movement = {
 type PieceDefinition = {
     id: number;
     value: PieceValue;
+    normalValue: PieceValue;
     label: string;
     image: string;
     fen?: string;
@@ -29,14 +30,14 @@ type PieceDefinition = {
 // IDs describe piece forms, not individual pieces or evaluation scores.
 // A rotated rook is a registered form with the same rules API as every other piece.
 export const pieceDefinitions: Record<PieceName, PieceDefinition> = {
-    pawn: { id: 1, value: 100, label: "pawn", image: "pawn", fen: "p", movement: { pawn: true }, normal_move: { normal_pawn: true} },
-    knight: { id: 2, value: 400, label: "knight", image: "knight", fen: "n", movement: { straight: 2, diagonal: 2 }, normal_move: {horse: true} },
-    bishop: { id: 3, value: 200, label: "bishop", image: "bishop", fen: "b", movement: { checkers: true }, normal_move: { diagonal: 7 } },
-    rook: { id: 4, value: 500, label: "rook", image: "rook", fen: "r", movement: { straight: 7 }, rotatesTo: "diagonalrook", normal_move: { straight: 7 }},
-    diagonalrook: { id: 5, value: 500, label: "diagonal rook", image: "rook-diagonal", movement: { diagonal: 7 }, rotatesTo: "rook", normal_move: { diagonal: 7 } },
-    queen: { id: 6, value: 800, label: "queen", image: "queen", fen: "q", movement: { straight: 7, horse: true }, normal_move: { straight: 7, diagonal: 7} },
+    pawn: { id: 1, value: 100, normalValue: 100, label: "pawn", image: "pawn", fen: "p", movement: { pawn: true }, normal_move: { normal_pawn: true} },
+    knight: { id: 2, value: 400, normalValue: 320, label: "knight", image: "knight", fen: "n", movement: { straight: 2, diagonal: 2 }, normal_move: {horse: true} },
+    bishop: { id: 3, value: 200, normalValue: 330, label: "bishop", image: "bishop", fen: "b", movement: { checkers: true }, normal_move: { diagonal: 7 } },
+    rook: { id: 4, value: 500, normalValue: 500, label: "rook", image: "rook", fen: "r", movement: { straight: 7 }, rotatesTo: "diagonalrook", normal_move: { straight: 7 }},
+    diagonalrook: { id: 5, value: 500, normalValue: 500, label: "diagonal rook", image: "rook-diagonal", fen: "d", movement: { diagonal: 7 }, rotatesTo: "rook", normal_move: { diagonal: 7 } },
+    queen: { id: 6, value: 800, normalValue: 900, label: "queen", image: "queen", fen: "q", movement: { straight: 7, horse: true }, normal_move: { straight: 7, diagonal: 7} },
     // Kings cannot be captured; checkmate is scored separately from material.
-    king: { id: 7, value: 0, label: "king", image: "king", fen: "k", movement: { straight: 1, diagonal: 1, castle: true }, normal_move: { straight: 1, diagonal: 1, castle: true } },
+    king: { id: 7, value: 0, normalValue: 0, label: "king", image: "king", fen: "k", movement: { straight: 1, diagonal: 1, castle: true }, normal_move: { straight: 1, diagonal: 1, castle: true } },
 };
 
 const names = Object.keys(pieceDefinitions) as PieceName[];
@@ -63,12 +64,12 @@ export function pieceDefinition(piece: number): PieceDefinition | undefined {
 }
 
 /** Signed material value; empty squares contribute zero. */
-export function pieceValue(piece: number): PieceValue {
+export function pieceValue(piece: number, ruleset: Ruleset = "chaos"): PieceValue {
     if (piece === 0) return 0;
     const definition = pieceDefinition(piece);
     if (!definition) throw new Error(`Unknown piece code: ${piece}`);
-    if (definition.value === 0) return 0;
-    return definition.value * (piece > 0 ? 1 : -1);
+    const value = ruleset === "normal" ? definition.normalValue : definition.value;
+    return value === 0 ? 0 : value * (piece > 0 ? 1 : -1);
 }
 
 export function makePiece(name: PieceName, color: Color): number {

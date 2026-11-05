@@ -4,9 +4,7 @@ import { useEffect, useRef } from "react";
 import Icon from "./icon";
 import Piece from "./piece";
 import type { Color } from "./utils/types";
-import type { GameStatus } from "./common/game_state";
-
-type FinishedStatus = Extract<GameStatus, { kind: "checkmate" | "stalemate" }>;
+import type { FinishedStatus } from "./common/game_state";
 
 type Props = {
     status: FinishedStatus;
@@ -19,12 +17,13 @@ type Props = {
 
 export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard }: Props) {
     const dialog = useRef<HTMLDialogElement>(null);
-    const draw = status.kind === "stalemate";
-    const won = status.kind === "checkmate" && status.winner === playerColor;
+    const draw = status.kind === "stalemate" || status.kind === "draw";
+    const won = "winner" in status && status.winner === playerColor;
     const title = draw ? "Draw" : won ? "You won" : "You lost";
     const opponentColor = playerColor === "white" ? "black" : "white";
-    const winnerColor = status.kind === "checkmate" ? status.winner : playerColor;
-    const reason = draw ? "Stalemate" : `${winnerColor === "white" ? "White" : "Black"} wins by checkmate`;
+    const winnerColor = "winner" in status ? status.winner : playerColor;
+    const reason = status.kind === "stalemate" ? "Stalemate" : status.kind === "draw" ? status.reason === "agreement" ? "Draw by agreement" : status.reason === "insufficient-material" ? "Insufficient material" : "75 moves by each side without a pawn move or capture"
+        : `${winnerColor === "white" ? "White" : "Black"} wins by ${status.kind === "resigned" ? "resignation" : "checkmate"}`;
 
     useEffect(() => {
         const modal = dialog.current;

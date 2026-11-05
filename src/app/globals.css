@@ -1578,25 +1578,28 @@ h1, h2, h3 {
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
-.bot-match-screen { max-width: 1160px; }
-.bot-match { display: grid; grid-template-columns: minmax(280px, 1.25fr) minmax(300px, .85fr); gap: 32px; align-items: start; }
-.bot-match .game-board { width: 100%; max-width: 620px; }
-.bot-panel { background: #171519; border: 1px solid var(--line); border-radius: 6px; padding: 22px; min-width: 0; }
-.bot-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.bot-panel-heading h2 { margin: 0; font: 600 28px var(--font-display), sans-serif; }
-.bot-panel-heading > span { font-size: 11px; color: var(--muted); }
-.bot-status { color: #f5a1ae; font-size: 13px; margin: 12px 0 20px; }
-.bot-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.bot-extensions { margin-top: 16px; }
-.bot-help { color: var(--muted); font-size: 11px; line-height: 1.7; }
-.bot-panel h3 { font-size: 16px; margin: 22px 0 12px; }
-.bot-stats { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
-.bot-stats > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.bot-stats dt { color: var(--muted); }
-.bot-stats dd { margin: 0; text-align: right; }
-@media (max-width: 1000px) { .bot-match { grid-template-columns: 1fr; } .bot-panel { width: 100%; max-width: 620px; margin: 0 auto; } }
-.bot-advanced summary { font-size: 12px; color: var(--muted); cursor: pointer; padding: 0 0 12px; }
-.bot-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.bot-stats > div { display: block; min-width: 0; padding: 10px 6px; background: var(--panel); }
-.bot-stats dt { font-size: 10px; min-height: 24px; }
-.bot-stats dd { text-align: left; font-size: 15px; overflow-wrap: anywhere; }
+.bot-match-screen { max-width: 720px; }
+.bot-error { max-width: 620px; margin: 16px auto; color: var(--muted); font-size: 13px; }
+.game-actions { position: relative; flex-shrink: 0; }
+.game-actions summary { list-style: none; cursor: pointer; white-space: nowrap; }
+.game-actions summary::-webkit-details-marker { display: none; }
+.game-actions summary svg { width: 15px; height: 15px; }
+.game-actions-menu { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(260px, calc(100vw - 48px)); z-index: 35; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); box-shadow: 0 12px 32px #0007; }
+.game-actions-menu > button, .game-actions-menu > a, .game-action-confirm button { display: block; width: 100%; border: 0; border-radius: 3px; padding: 12px; text-align: left; background: transparent; color: var(--foreground); font: inherit; font-size: 13px; text-decoration: none; }
+.game-actions-menu button:hover, .game-actions-menu a:hover { background: #ffffff0b; }
+.game-actions-menu button:disabled { opacity: .4; cursor: default; }
+.game-actions .game-action-confirm p { display: block; margin: 8px 8px 12px; color: var(--foreground); font-size: 13px; }
+.game-action-confirm > div { display: flex; }
+.draw-offer { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+.draw-offer p { margin: 0 0 12px; font-size: 13px; }
+.draw-offer > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.game-action-notice { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+.lab-position .game-board { width: 100%; min-width: 0; }
+.lab-position .board-player { display: none; }
+.lab-play-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.lab-play-actions button { padding: 10px 12px; font-size: 12px; }
+
+.rooke-logo { width: 44px; height: 60px; flex-shrink: 0; }
+.rooke-avatar { width: 24px; height: 32px; flex-shrink: 0; object-fit: contain; }
+
+.bot-rating { margin-left: 0.25em; color: var(--muted); font-size: 0.8em; font-weight: 400; white-space: nowrap; }

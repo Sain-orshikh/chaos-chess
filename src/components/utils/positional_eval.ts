@@ -1,5 +1,5 @@
 import { pieceDefinitions, pieceIds } from "./pieces";
-import type { PieceName } from "./types";
+import type { PieceName, Ruleset } from "./types";
 
 // A pawn is 100. Any two static position bonuses differ by LESS than 80,
 // so positional preferences alone cannot outweigh even a one-pawn material gap.
@@ -17,8 +17,9 @@ export const STARTING_PHASE_MATERIAL = 2 * (
     2 * pieceDefinitions.rook.value + pieceDefinitions.queen.value
 );
 /** Both armies determine how crowded the board is. Pawn advancement does not alter phase. */
-export function openingWeight(nonPawnMaterial: number): number {
-    return Math.max(0, Math.min(1, nonPawnMaterial / STARTING_PHASE_MATERIAL));
+export function openingWeight(nonPawnMaterial: number, ruleset: Ruleset = "chaos"): number {
+    const startingMaterial = ruleset === "normal" ? 2 * (2 * pieceDefinitions.knight.normalValue + 2 * pieceDefinitions.bishop.normalValue + 2 * pieceDefinitions.rook.normalValue + pieceDefinitions.queen.normalValue) : STARTING_PHASE_MATERIAL;
+    return Math.max(0, Math.min(1, nonPawnMaterial / startingMaterial));
 }
 
 /** Tables use White's view (row 7 = home). Black mirrors only the rank. */

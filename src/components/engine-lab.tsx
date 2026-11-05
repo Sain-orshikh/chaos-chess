@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useReducer } from "react";
 import Icon from "./icon";
-import { BoardPiece } from "./piece";
+import Board from "./board";
+import { createGame, gameReducer, isGameOver } from "./common/game_state";
+import type { GameAction, GameState } from "./common/game_state";
+import { analysisReducer } from "./common/analysis_session";
+import { formatFen } from "./utils/fen_parcer";
 import { benchmarkPositions, parseBenchmarkFen } from "./common/benchmark_positions";
-import type { BenchmarkPosition } from "./common/benchmark_positions";
 import type { BenchmarkMessage, BenchmarkRequest, BenchmarkResult } from "./common/benchmark";
 import { DEFAULT_MAX_QUIESCENCE_PLY } from "./common/engine";
 import { defaultBotSettings } from "./common/bot_search";
-import type { BasicMove } from "./utils/types";
-import { pieceColor, pieceDefinition } from "./utils/pieces";
+import type { BasicMove, Ruleset } from "./utils/types";
 
 const integer = (value: number) => value.toLocaleString();
 function time(value: number) { return value < 1000 ? `${value.toFixed(2)} ms` : `${(value / 1000).toFixed(2)} s`; }
@@ -20,10 +22,20 @@ function moveName(move: BasicMove | null) {
     if (move.kind === "castle") return `${squareName(move.from)} → ${squareName(move.to)} · castle`;
     return `${squareName(move.from)} → ${squareName(move.to)}${move.promotion ? ` = ${move.promotion}` : ""}`;
 }
+function gameFromFen(fen: string, ruleset: Ruleset = "chaos") {
+    const parsed = parseBenchmarkFen(fen, ruleset);
+    return createGame(parsed.board, parsed.turn, undefined, ruleset, parsed.standard, parsed.halfmoveClock);
+}
+const INITIAL_GAME = gameFromFen(benchmarkPositions[0].fen);
+
 type Progress = Extract<BenchmarkMessage, { type: "progress" }>;
 
 export default function EngineLab() {
-    const [position, setPosition] = useState<BenchmarkPosition>(() => parseBenchmarkFen(benchmarkPositions[0].fen));
+    const [session, dispatchSession] = useReducer(analysisReducer, { game: INITIAL_GAME, history: [] });
+    const game = session.game;
+    const position = { board: game.board, turn: game.turn, fen: formatFen(game.board, game.turn, game.standard, game.halfmoveClock) };
+    const rootGame = useRef<GameState>(INITIAL_GAME);
+    const loadedFen = useRef<string>(benchmarkPositions[0].fen);
     const [preset, setPreset] = useState<string>(benchmarkPositions[0].id);
     const [fen, setFen] = useState<string>(benchmarkPositions[0].fen);
     const [flipped, setFlipped] = useState(false);
@@ -43,13 +55,36 @@ export default function EngineLab() {
     const latest = useRef<Progress | null>(null);
     useEffect(() => () => { worker.current?.terminate(); }, []);
 
-    function loadPosition(nextFen: string, nextPreset: string) {
+    function clearMeasurements() {
+        setResults([]); setGeneration(null); setHighlight(null); setProgress(null);
+        latest.current = null; setError(""); setStatus("Ready to benchmark");
+    }
+    function syncPosition(next: GameState) {
+        if (!next.pendingPromotion) {
+            const value = formatFen(next.board, next.turn, next.standard, next.halfmoveClock);
+            setFen(value); loadedFen.current = value;
+        }
+        clearMeasurements();
+    }
+    function loadPosition(nextFen: string, nextPreset: string, ruleset = game.ruleset) {
         try {
-            const next = parseBenchmarkFen(nextFen);
-            setPosition(next); setFen(next.fen); setPreset(nextPreset);
-            setResults([]); setGeneration(null); setHighlight(null); setProgress(null);
-            latest.current = null; setError(""); setStatus("Ready to benchmark");
+            const next = gameFromFen(nextFen, ruleset);
+            dispatchSession({ type: "load", game: next }); rootGame.current = next;
+            syncPosition(next); setPreset(nextPreset);
         } catch (e) { setError(e instanceof Error ? e.message : "Invalid position."); }
+    }
+    function onGameAction(action: GameAction) {
+        if (busy) return;
+        const next = gameReducer(game, action);
+        dispatchSession({ type: "game", action });
+        if (next.board !== game.board) syncPosition(next);
+    }
+    function undo() {
+        const next = analysisReducer(session, { type: "undo" });
+        dispatchSession({ type: "undo" }); syncPosition(next.game);
+    }
+    function playSuggestion(move: BasicMove) {
+        onGameAction({ type: "engine-move", move, expectedBoard: game.board, turn: game.turn });
     }
     function stop() {
         worker.current?.terminate(); worker.current = null;
@@ -63,8 +98,8 @@ export default function EngineLab() {
     }
     function run() {
         setError("");
-        if (fen.trim() !== position.fen) { setError("Load your edited FEN before starting the benchmark."); return; }
-        const request: BenchmarkRequest = { fen: position.fen, modes: [defaultBotSettings.mode], maxDepth: depth, repetitions, timeLimitMs: limit, quiescence: true, maxQuiescencePly };
+        if (fen.trim() !== loadedFen.current) { setError("Load your edited FEN before starting the benchmark."); return; }
+        const request: BenchmarkRequest = { fen: position.fen, castling: game.castling, standard: game.standard, ruleset: game.ruleset, modes: [defaultBotSettings.mode], maxDepth: depth, repetitions, timeLimitMs: limit, quiescence: true, maxQuiescencePly };
         try {
             const current = new Worker(new URL("../workers/benchmark.worker.ts", import.meta.url), { type: "module" });
             worker.current = current;
@@ -105,29 +140,25 @@ export default function EngineLab() {
     }
     const shownStats = progress?.stats ?? results.at(-1)?.stats;
     const pieces = position.board.filter(Boolean).length;
+    const bestMove = results.filter(result => result.status === "complete").at(-1)?.move;
     return <section className="engine-lab">
         <div className="page-heading"><h1>Engine lab</h1><span className="lab-eyebrow">Measure. Compare. Improve.</span></div>
-        <p className="lab-intro">Test the current engine across positions, depths, and time limits.</p>
+        <p className="lab-intro">Play either side, test the engine, then play its suggestion and continue from the new position.</p>
         <div className="lab-layout">
             <div className="lab-position">
-                <div className="lab-board-header"><div><strong>{preset === "custom" ? "Custom position" : benchmarkPositions.find(item => item.id === preset)?.name}</strong><span>{position.turn === "white" ? "White" : "Black"} to move · {pieces} pieces</span></div><button className="quiet-button" type="button" onClick={() => setFlipped(value => !value)} aria-label="Flip board"><Icon name="replay" />Flip</button></div>
-                <div className="board-frame"><div className="chess-grid lab-board" role="img" aria-label={`Position preview, ${position.turn} to move, ${pieces} pieces`}>
-                    {Array.from({ length: 64 }, (_, index) => {
-                        const row = flipped ? 7 - Math.floor(index / 8) : Math.floor(index / 8);
-                        const col = flipped ? 7 - index % 8 : index % 8;
-                        const square = row * 8 + col, piece = position.board[square];
-                        return <div key={square} className={`board-square ${(row + col) % 2 ? "dark" : "light"}${highlight && (highlight.from === square || highlight.to === square) ? " latest" : ""}`} aria-label={`${squareName(square)} ${piece ? `${pieceColor(piece)} ${pieceDefinition(piece)!.label}` : "empty"}`}>
-                            {index % 8 === 0 && <span className="coordinate rank">{8 - row}</span>}
-                            {index >= 56 && <span className="coordinate file">{"abcdefgh"[col]}</span>}
-                            <BoardPiece code={piece} />
-                        </div>;
-                    })}
-                </div></div>
+                <div className="lab-board-header"><div><strong>{session.history.length ? `Analysis · ${session.history.length} ${session.history.length === 1 ? "ply" : "plies"}` : preset === "custom" ? "Custom position" : benchmarkPositions.find(item => item.id === preset)?.name}</strong><span>{position.turn === "white" ? "White" : "Black"} to move · {pieces} pieces</span></div><button className="quiet-button" type="button" onClick={() => setFlipped(value => !value)} aria-label="Flip board"><Icon name="replay" />Flip</button></div>
+                <Board game={game} onAction={onGameAction} orientation={flipped ? "black" : "white"} analysis locked={busy} highlightedMove={highlight} />
+                <div className="lab-play-actions">
+                    <button type="button" className="primary-button" disabled={busy || !bestMove || !!game.pendingPromotion || isGameOver(game.status)} onClick={() => { if (bestMove) playSuggestion(bestMove); }}><Icon name="play" />Play best move</button>
+                    <button type="button" className="quiet-button" disabled={busy || !session.history.length} onClick={undo}>Undo move</button>
+                    <button type="button" className="quiet-button" disabled={busy || !session.history.length} onClick={() => { dispatchSession({ type: "load", game: rootGame.current }); syncPosition(rootGame.current); }}>Reset position</button>
+                </div>
                 <div className="lab-generation"><span>All legal moves · generation</span><strong>{generation ? `${generation.microseconds.toFixed(2)} µs` : "—"}</strong><small>{generation ? `${generation.legalMoves} legal moves · median of 3 warmed batches` : "Measured separately before the search"}</small></div>
             </div>
             <div className="lab-configuration">
                 <fieldset disabled={busy}>
                     <legend className="sr-only">Benchmark configuration</legend>
+                    <label className="lab-field">Rules<select value={game.ruleset} onChange={event => loadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "start", event.target.value as Ruleset)}><option value="chaos">Chaos Chess</option><option value="normal">Classic Chess</option></select></label>
                     <label className="lab-field">Position<select value={preset} onChange={event => {
                         const item = benchmarkPositions.find(item => item.id === event.target.value);
                         if (item) loadPosition(item.fen, item.id);
@@ -135,7 +166,7 @@ export default function EngineLab() {
                     }}>{benchmarkPositions.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}<option value="custom">Custom FEN</option></select></label>
                     <form onSubmit={event => { event.preventDefault(); loadPosition(fen, "custom"); }}>
                         <label className="lab-field">FEN position<textarea rows={3} spellCheck={false} value={fen} onChange={event => setFen(event.target.value)} aria-describedby="fen-help" /></label>
-                        <div className="lab-fen-footer"><small id="fen-help">Chaos Chess rules. Castling and en passant fields are ignored.</small><button className="quiet-button" type="submit">Load FEN</button></div>
+                        <div className="lab-fen-footer"><small id="fen-help">{game.ruleset === "normal" ? "Normal rules. FEN includes castling rights and en passant." : "Chaos rules. D/d denotes a diagonal rook; standard castling and en passant fields are ignored."}</small><button className="quiet-button" type="submit">Load FEN</button></div>
                     </form>
                     <div className="lab-options">
                         <label className="lab-field">Maximum depth<select value={depth} onChange={event => setDepth(Number(event.target.value))}>{Array.from({ length: 16 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? "ply" : "plies"}</option>)}</select></label>
@@ -146,7 +177,7 @@ export default function EngineLab() {
                 </fieldset>
                 <div className="lab-hashing"><Icon name="shield" /><span><strong>Current engine</strong><small>Move ordering, quiescence, positional evaluation, and transposition caching.</small></span></div>
                 {error && <p role="alert" className="form-error">{error}</p>}
-                <div className="lab-actions">{busy ? <button type="button" className="primary-button" onClick={stop}><Icon name="close" />Stop benchmark</button> : <button type="button" className="primary-button" onClick={run}><Icon name="play" />Run benchmark</button>}<span>Runs depths 1–{depth}. One ply is one player’s action.</span></div>
+                <div className="lab-actions">{busy ? <button type="button" className="primary-button" onClick={stop}><Icon name="close" />Stop benchmark</button> : <button type="button" className="primary-button" disabled={!!game.pendingPromotion || isGameOver(game.status)} onClick={run}><Icon name="play" />Run benchmark</button>}<span>Runs depths 1–{depth}. One ply is one player’s action.</span></div>
             </div>
         </div>
         <div className="lab-results-header"><div><h2>Search results</h2><p role="status">{status}</p></div>{busy && <span className="lab-running">Running</span>}</div>

@@ -1,13 +1,14 @@
 import { saveUndoInformation, unmakeMove } from "./legal_move";
 import { legalMovesForPiece as LegalMoveGenerate, kingSafe } from "./rules";
 import { createCastlingState, cloneStandardState } from "../utils/types";
-import type { BasicMove, Board, Color, CastlingState, StandardState } from "../utils/types";
+import type { BasicMove, Board, Color, CastlingState, StandardState, Ruleset } from "../utils/types";
 import { MATE_SCORE, pieceColor, pieceValue, pieceDefinitions, pieceIds } from "../utils/pieces";
 import { makeMove } from "./apply_move";
 import { evaluateBoard, DEFAULT_CHECKMATE_EVAL_SCALE } from "../utils/checkmate_eval";
 import { createPieceSquareTables, defaultPieceSquareTables } from "../utils/positional_eval";
 import { zobrist_hash } from "../utils/hash";
 import { createTranspositionTable } from "../utils/transpose_table";
+import { automaticDrawReason, nextHalfmoveClock } from "./draw_rules";
 
 export type SearchStats = {
     positionsVisited: number;
@@ -39,6 +40,7 @@ export type SearchMode = typeof searchModes[number];
 export type SearchOptions = {
     castling?: CastlingState;
     standard?: StandardState;
+    halfmoveClock?: number;
     mode?: SearchMode;
     maxTimeMs?: number;
     quiescence?: boolean;
@@ -74,26 +76,26 @@ function legalMoves(board: Board, turn: Color, castling: CastlingState, stats?: 
 }
 
 /** Search priority, not a White-positive evaluation: both colors use positive magnitudes. */
-export function movePriority(board: Board, move: BasicMove): number {
+export function movePriority(board: Board, move: BasicMove, ruleset: Ruleset = "chaos"): number {
     if (move.kind === "rotate" || move.kind === "castle") return 0;
     const attacker = board[move.from];
     // A king has no material value, but must not rank as a free capture attacker.
     const attackerValue = Math.abs(attacker) === pieceIds.king
-        ? pieceDefinitions.queen.value + pieceDefinitions.pawn.value
-        : Math.abs(pieceValue(attacker));
+        ? Math.abs(pieceValue(pieceIds.queen, ruleset)) + Math.abs(pieceValue(pieceIds.pawn, ruleset))
+        : Math.abs(pieceValue(attacker, ruleset));
     const victim = move.kind === "en-passant" ? board[move.capturedSquare] : move.kind === "ch" ? board[(move.from + move.to) / 2]
         : move.kind === "c" ? board[move.to] : 0;
-    const capturedValue = Math.abs(pieceValue(victim));
+    const capturedValue = Math.abs(pieceValue(victim, ruleset));
     const promotionBonus = move.promotion
-        ? pieceDefinitions[move.promotion].value - pieceDefinitions.pawn.value
+        ? Math.abs(pieceValue(pieceDefinitions[move.promotion].id, ruleset)) - Math.abs(pieceValue(pieceIds.pawn, ruleset))
         : 0;
     return (capturedValue > 0 ? 10 * capturedValue - attackerValue : 0) + promotionBonus;
 }
 
-function orderMoves(board: Board, moves: BasicMove[], mode: SearchMode): BasicMove[] {
+function orderMoves(board: Board, moves: BasicMove[], mode: SearchMode, ruleset: Ruleset): BasicMove[] {
     if (mode !== "alpha-beta-ordered") return moves;
     // Score once, before making any move. Equal priorities retain generator order.
-    return moves.map(move => ({ move, priority: movePriority(board, move) }))
+    return moves.map(move => ({ move, priority: movePriority(board, move, ruleset) }))
         .sort((a, b) => b.priority - a.priority)
         .map(entry => entry.move);
 }
@@ -102,6 +104,9 @@ function orderMoves(board: Board, moves: BasicMove[], mode: SearchMode): BasicMo
 export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats, options: SearchOptions = {}): BasicMove | null {
     const castling = { ...(options.castling ?? createCastlingState()) };
     const standard = options.standard ? cloneStandardState(options.standard) : undefined;
+    const ruleset = standard ? "normal" : "chaos";
+    let halfmoveClock = options.halfmoveClock ?? 0;
+    if (!Number.isSafeInteger(halfmoveClock) || halfmoveClock < 0) throw new RangeError("Invalid halfmove clock");
     if (!Number.isInteger(depth) || depth < 1) throw new RangeError("Search depth must be a positive integer");
     const checkmateEvalScale = options.checkmateEvalScale ?? DEFAULT_CHECKMATE_EVAL_SCALE;
     if (!Number.isFinite(checkmateEvalScale) || checkmateEvalScale < 0 || checkmateEvalScale > 100) throw new RangeError("Checkmate evaluation scale must be from 0 to 100");
@@ -143,11 +148,15 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
     }
     function evaluate(): number {
         if (stats) { stats.positionsEvaluated++; stats.materialEvaluations++; }
-        return evaluateBoard(board, checkmateEvalScale, positionalScale, tables);
+        return evaluateBoard(board, checkmateEvalScale, positionalScale, tables, ruleset);
     }
     function terminalScore(turn: Color, plyFromRoot: number): number {
         if (stats) { stats.positionsEvaluated++; stats.terminalPositions++; }
         return kingSafe(board, turn, standard) ? 0 : turn === "white" ? -MATE_SCORE + plyFromRoot : MATE_SCORE - plyFromRoot;
+    }
+    function drawScore(): number {
+        if (stats) { stats.positionsEvaluated++; stats.terminalPositions++; }
+        return 0;
     }
     function cutoff(alpha: number, beta: number, skipped: number): boolean {
         if (mode === "minimax" || alpha < beta) return false;
@@ -156,10 +165,13 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
     }
     function afterMove(move: BasicMove, tactical: boolean, next: () => number): number {
         const undo = saveUndoInformation(board, move, castling, standard);
+        const previousClock = halfmoveClock;
+        const nextClock = nextHalfmoveClock(board, move, halfmoveClock);
         makeMove(board, move, castling, standard);
+        halfmoveClock = nextClock;
         if (stats) { stats.movesExplored++; if (tactical) stats.quiescenceMoves++; }
         try { return next(); }
-        finally { unmakeMove(board, move, undo, castling, standard); }
+        finally { unmakeMove(board, move, undo, castling, standard); halfmoveClock = previousClock; }
     }
 
     function quiescence(turn: Color, alpha: number, beta: number, ply: number, existingMoves?: BasicMove[]): number {
@@ -172,6 +184,7 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
         checkLimits();
         const moves = existingMoves ?? legalMoves(board, turn, castling, stats, standard);
         if (moves.length === 0) return terminalScore(turn, depth + ply);
+        if (automaticDrawReason(board, ruleset, halfmoveClock)) return drawScore();
         const inCheck = !kingSafe(board, turn, standard);
         const candidates = inCheck ? moves : moves.filter(move =>
             move.kind === "c" || move.kind === "ch" || move.kind === "en-passant" || (move.kind !== "rotate" && move.promotion !== undefined));
@@ -190,7 +203,7 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
             else beta = Math.min(beta, bestScore);
             if (cutoff(alpha, beta, candidates.length)) return bestScore;
         }
-        const orderedMoves = orderMoves(board, candidates, mode);
+        const orderedMoves = orderMoves(board, candidates, mode, ruleset);
         const nextTurn = turn === "white" ? "black" : "white";
         for (let index = 0; index < orderedMoves.length; index++) {
             const score = afterMove(orderedMoves[index], true, () => quiescence(nextTurn, alpha, beta, ply + 1));
@@ -208,7 +221,7 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
         const alphaStart = alpha
         const betaStart = beta
 
-        const hash = zobrist_hash(board, castling.white, castling.black, turn, standard)
+        const hash = zobrist_hash(board, castling.white, castling.black, turn, standard, halfmoveClock)
         const entry = table.lookup(hash)
         if (
             entry !== undefined &&
@@ -228,10 +241,11 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
         let bestMoveForThisPosition = null
             const moves = legalMoves(board, turn, castling, stats, standard);
             if (moves.length === 0) return terminalScore(turn, depth - remainingDepth);
+            if (automaticDrawReason(board, ruleset, halfmoveClock)) return drawScore();
             if (remainingDepth === 0) {
                 return options.quiescence === false ? evaluate() : quiescence(turn, alpha, beta, 0, moves);
             }
-            const orderedMoves = orderMoves(board, moves, mode);
+            const orderedMoves = orderMoves(board, moves, mode, ruleset);
             const nextTurn = turn === "white" ? "black" : "white";
             let bestScore = turn === "white" ? -Infinity : Infinity;
             for (let index = 0; index < orderedMoves.length; index++) {
@@ -274,8 +288,9 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
         let alpha = -Infinity, beta = Infinity;
         let bestMove: BasicMove | null = null;
         let bestScore = turn === "white" ? -Infinity : Infinity;
-        const rootMoves = orderMoves(board, legalMoves(board, turn, castling, stats, standard), mode);
+        const rootMoves = orderMoves(board, legalMoves(board, turn, castling, stats, standard), mode, ruleset);
         if (rootMoves.length === 0) terminalScore(turn, 0);
+        else if (automaticDrawReason(board, ruleset, halfmoveClock)) { drawScore(); return null; }
         for (const move of rootMoves) {
             const score = afterMove(move, false, () => search(turn === "white" ? "black" : "white", depth - 1, alpha, beta));
             checkLimits(true);

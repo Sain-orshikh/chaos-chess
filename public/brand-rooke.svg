@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="60" viewBox="0 0 660 900" role="img" aria-labelledby="rooke-title rooke-description">
+  <title id="rooke-title">Rooke</title>
+  <desc id="rooke-description">A red and silver rook with a crenellated crown, diagonal separation, and circular opening, matching the Chaos Chess bishop.</desc>
+  <path fill="#df2634" d="M70 30H195V155H265V30H395V155H465V30H590V300L505 395L150 555L155 395L70 300Z"/>
+  <path fill="#e7e6e2" fill-rule="evenodd" d="M510 430L540 775H610V870H50V775H120L145 595ZM390 682A60 60 0 1 1 270 682A60 60 0 0 1 390 682ZM357 682A27 27 0 1 0 303 682A27 27 0 0 0 357 682Z"/>
+</svg>

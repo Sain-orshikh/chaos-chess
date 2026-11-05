@@ -1,13 +1,15 @@
 import { Engine, createSearchStats, SearchLimitError, DEFAULT_MAX_QUIESCENCE_PLY, DEFAULT_MAX_CHECK_EVASION_PLY, searchModes } from "./engine";
 import type { SearchMode, SearchStats } from "./engine";
-import LegalMoveGenerate from "./legal_move";
+import { legalMovesForPiece as LegalMoveGenerate } from "./rules";
 import { parseBenchmarkFen } from "./benchmark_positions";
 import { pieceColor } from "../utils/pieces";
-import { createCastlingState } from "../utils/types";
-import type { BasicMove, CastlingState } from "../utils/types";
+import { createCastlingState, cloneStandardState } from "../utils/types";
+import type { BasicMove, CastlingState, Ruleset, StandardState } from "../utils/types";
 
 export type BenchmarkRequest = {
     castling?: CastlingState;
+    ruleset?: Ruleset;
+    standard?: StandardState;
     positionalScale?: number;
     fen: string; modes: SearchMode[]; maxDepth: number; repetitions: number; timeLimitMs: number; quiescence?: boolean; maxQuiescencePly?: number; maxCheckEvasionPly?: number;
 };
@@ -25,7 +27,9 @@ export type BenchmarkMessage =
 function median(values: number[]): number { return [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]; }
 
 export function runBenchmark(request: BenchmarkRequest, emit: (message: BenchmarkMessage) => void): void {
-    const { board, turn } = parseBenchmarkFen(request.fen);
+    const position = parseBenchmarkFen(request.fen, request.ruleset);
+    const { board, turn, halfmoveClock } = position;
+    const standard = position.standard ? cloneStandardState(request.standard ?? position.standard) : undefined;
     const castling = { ...(request.castling ?? createCastlingState()) };
     if (!Number.isInteger(request.maxDepth) || request.maxDepth < 1 || request.maxDepth > 16) throw new Error("Choose a depth from 1 to 16.");
     if (![1, 3].includes(request.repetitions)) throw new Error("Choose one or three trials.");
@@ -39,7 +43,7 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
     function generateAll() {
         let count = 0;
         for (let square = 0; square < 64; square++) {
-            if (pieceColor(board[square]) === turn) count += LegalMoveGenerate(board, square, castling).length;
+            if (pieceColor(board[square]) === turn) count += LegalMoveGenerate(board, square, castling, standard).length;
         }
         return count;
     }
@@ -53,7 +57,7 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
     }
     emit({ type: "generation", microseconds: median(samples), legalMoves: generateAll() });
     for (const mode of [...new Set(request.modes)]) {
-        Engine(board, turn, 1, undefined, { mode, quiescence: false, castling, positionalScale: request.positionalScale }); // Untimed warmup.
+        Engine(board, turn, 1, undefined, { mode, quiescence: false, castling, standard, halfmoveClock, positionalScale: request.positionalScale }); // Untimed warmup.
         for (let depth = 1; depth <= request.maxDepth; depth++) {
             const samplesMs: number[] = [];
             let move: BasicMove | null = null;
@@ -64,7 +68,7 @@ export function runBenchmark(request: BenchmarkRequest, emit: (message: Benchmar
                 emit({ type: "progress", mode, depth, trial, stats });
                 try {
                     move = Engine(board, turn, depth, stats, {
-                        mode, castling, positionalScale: request.positionalScale, maxTimeMs: request.timeLimitMs, quiescence, maxQuiescencePly, maxCheckEvasionPly,
+                        mode, castling, standard, halfmoveClock, positionalScale: request.positionalScale, maxTimeMs: request.timeLimitMs, quiescence, maxQuiescencePly, maxCheckEvasionPly,
                         onProgress: snapshot => emit({ type: "progress", mode, depth, trial, stats: snapshot }),
                     });
                     samplesMs.push(stats.elapsedMs);

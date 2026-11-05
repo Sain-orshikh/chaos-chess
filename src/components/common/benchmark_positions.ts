@@ -1,7 +1,7 @@
-import { parseFen } from "../utils/fen_parcer";
-import { isKingSafe } from "../utils/king_safety";
+import { parseFen, standardStateFromFen } from "../utils/fen_parcer";
+import { kingSafe } from "./rules";
 import { makePiece, pieceIds } from "../utils/pieces";
-import type { Board, Color } from "../utils/types";
+import type { Board, Color, Ruleset, StandardState } from "../utils/types";
 
 export const benchmarkPositions = [
     { id: "random", name: "Random middlegame", detail: "27 pieces · our seeded test position", fen: "r1b1kn1r/p1npp2p/pp1bp2Q/8/2P2PP1/B4KP1/P1q5/R4BNR w - - 0 17" },
@@ -13,10 +13,10 @@ export const benchmarkPositions = [
     { id: "promotion", name: "Promotion race", detail: "4 pieces · four promotion choices", fen: "7k/2P5/8/8/8/8/5p2/K7 w - - 0 1" },
 ] as const;
 
-export type BenchmarkPosition = { board: Board; turn: Color; fen: string };
+export type BenchmarkPosition = { board: Board; turn: Color; fen: string; standard?: StandardState; halfmoveClock: number };
 
 /** Strict validation at the custom-input boundary; engine rules remain Chaos Chess. */
-export function parseBenchmarkFen(input: string): BenchmarkPosition {
+export function parseBenchmarkFen(input: string, ruleset: Ruleset = "chaos"): BenchmarkPosition {
     const fields = input.trim().split(/\s+/);
     if (![1, 2, 6].includes(fields.length)) throw new Error("Enter a board layout, layout plus turn, or a complete six-field FEN.");
     if (fields[1] !== undefined && !["w", "b"].includes(fields[1])) throw new Error("The side to move must be w or b.");
@@ -26,11 +26,13 @@ export function parseBenchmarkFen(input: string): BenchmarkPosition {
         if (!/^\d+$/.test(fields[4]) || !/^\d+$/.test(fields[5]) || !Number.isSafeInteger(Number(fields[4])) || !Number.isSafeInteger(Number(fields[5])) || Number(fields[5]) < 1) throw new Error("Invalid move counters.");
     }
     const board = parseFen(fields[0]);
+    if (ruleset === "normal" && board.some(piece => Math.abs(piece) === pieceIds.diagonalrook)) throw new Error("Diagonal rooks are only available in Chaos Chess.");
+    const standard = ruleset === "normal" ? standardStateFromFen(input) : undefined;
     for (const color of ["white", "black"] as const) {
         if (board.filter(piece => piece === makePiece("king", color)).length !== 1) throw new Error("The position must contain exactly one king of each color.");
     }
     if (board.some((piece, square) => Math.abs(piece) === pieceIds.pawn && (square < 8 || square >= 56))) throw new Error("Pawns on the first or eighth rank must already be promoted.");
     const turn = fields[1] === "b" ? "black" : "white";
-    if (!isKingSafe(board, turn === "white" ? "black" : "white")) throw new Error("The king of the side that just moved cannot be left in check.");
-    return { board, turn, fen: fields.length === 6 ? fields.join(" ") : `${fields[0]} ${fields[1] ?? "w"} - - 0 1` };
+    if (!kingSafe(board, turn === "white" ? "black" : "white", standard)) throw new Error("The king of the side that just moved cannot be left in check.");
+    return { board, turn, halfmoveClock: fields.length === 6 ? Number(fields[4]) : 0, ...(standard ? { standard } : {}), fen: fields.length === 6 ? fields.join(" ") : `${fields[0]} ${fields[1] ?? "w"} - - 0 1` };
 }

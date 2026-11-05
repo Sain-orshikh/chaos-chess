@@ -46,5 +46,6 @@ next-env.d.ts
 
 # Keep the engine and API regression tests
 !tests/*.test.mjs
+!benchmarks/rooke-match-worker.mjs
 
 /design

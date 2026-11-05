@@ -8,6 +8,7 @@ interface ZobristTable {
     normal: bigint;
     castlingRights: bigint[];
     enPassant: bigint[];
+    halfmoveClock: bigint[];
 }
 
 type HashValue = bigint;
@@ -28,15 +29,17 @@ function zobrist_init(): ZobristTable {
         normal: randomBits64(),
         castlingRights: Array.from({ length: 4 }, randomBits64),
         enPassant: Array.from({ length: 64 }, randomBits64),
+        halfmoveClock: Array.from({ length: 151 }, randomBits64),
     };
 }
 
 // Every position in this module instance uses the same random keys.
 const table = zobrist_init();
 
-export function zobrist_hash(board: Board, castleWhite: boolean, castleBlack: boolean, turn: Color, standard?: StandardState): HashValue{
+export function zobrist_hash(board: Board, castleWhite: boolean, castleBlack: boolean, turn: Color, standard?: StandardState, halfmoveClock = 0): HashValue{
 
     let h: HashValue = BigInt(0);
+    if (halfmoveClock > 0) h ^= table.halfmoveClock[Math.min(150, halfmoveClock)];
     if (standard) {
         h ^= table.normal;
         const rights = standard.castlingRights;

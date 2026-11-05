@@ -1,4 +1,4 @@
-import type { Board } from "./types";
+import type { Board, Ruleset } from "./types";
 import { pieceIds, pieceValue, pieceDefinitions } from "./pieces";
 import { boundedPositionBonus, defaultPieceSquareTables, openingWeight } from "./positional_eval";
 import type { PieceSquareTables } from "./positional_eval";
@@ -26,7 +26,7 @@ export function ForceKingToCheckmateEval(myKing: number, enemyKing: number, endg
 }
 
 /** White-positive static score. This guides king placement; it does not detect mate. */
-export function evaluateBoard(board: Board, scale = DEFAULT_CHECKMATE_EVAL_SCALE, positionalScale = 1, tables: PieceSquareTables = defaultPieceSquareTables): number {
+export function evaluateBoard(board: Board, scale = DEFAULT_CHECKMATE_EVAL_SCALE, positionalScale = 1, tables: PieceSquareTables = defaultPieceSquareTables, ruleset: Ruleset = "chaos"): number {
     let material = 0, whiteKing = -1, blackKing = -1;
     let whitePieces = 0, blackPieces = 0;
     let whiteHasNonPawn = false, blackHasNonPawn = false;
@@ -42,13 +42,13 @@ export function evaluateBoard(board: Board, scale = DEFAULT_CHECKMATE_EVAL_SCALE
         }
         if (piece === pieceIds.king) { whiteKing = square; continue; }
         if (piece === -pieceIds.king) { blackKing = square; continue; }
-        const value = pieceValue(piece);
+        const value = pieceValue(piece, ruleset);
         material += value;
         if (id !== pieceIds.pawn) nonPawnMaterial += Math.abs(value);
         if (piece > 0) { whitePieces++; if (piece !== pieceIds.pawn) whiteHasNonPawn = true; }
         else { blackPieces++; if (piece !== -pieceIds.pawn) blackHasNonPawn = true; }
     }
-    const early = openingWeight(nonPawnMaterial);
+    const early = openingWeight(nonPawnMaterial, ruleset);
     const positional = positionalScale * (openingScore * early + endgameScore * (1 - early));
     if (scale === 0 || material === 0 || whiteKing < 0 || blackKing < 0) return material + boundedPositionBonus(positional);
     const whiteAhead = material > 0;

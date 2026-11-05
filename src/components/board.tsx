@@ -1,33 +1,45 @@
 'use client';
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import type { Dispatch } from "react";
 import Piece, { BoardPiece } from "./piece";
 import { pieceColor, pieceDefinition, pieceDefinitions } from "./utils/pieces";
-import Icon from "./icon";
 import GameResultModal from "./game-result-modal";
+import GameActions from "./game-actions";
 import type { BasicMove, Board as BoardState, Color, Ruleset } from "./utils/types";
 import BotPanel from "./bot-panel";
-import { defaultBotSettings } from "./common/bot_search";
 import { parseFen } from "./utils/fen_parcer";
 import { legalMovesForPiece as LegalMoveGenerate } from "./common/rules";
-import { createGame, gameReducer, promotionPieces } from "./common/game_state";
+import { createGame, gameReducer, promotionPieces, isGameOver } from "./common/game_state";
+
+import type { GameState, GameAction } from "./common/game_state";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset = "chaos" }: { orientation?: Color; playerName?: string; bot?: boolean; ruleset?: Ruleset }) {
-    const [game, dispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen), "white", undefined, ruleset));
+type Props = {
+    orientation?: Color; playerName?: string; bot?: boolean; ruleset?: Ruleset;
+    game?: GameState; onAction?: Dispatch<GameAction>; locked?: boolean; analysis?: boolean;
+    highlightedMove?: BasicMove | null; onSetup?: () => void;
+};
+
+export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset: initialRuleset = "chaos", game: controlledGame, onAction, locked = false, analysis = false, highlightedMove, onSetup }: Props) {
+    const [localGame, localDispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen), "white", undefined, initialRuleset));
+    const game = controlledGame ?? localGame;
+    const dispatch = onAction ?? localDispatch;
+    const ruleset = game.ruleset;
     const { board, castling, standard, turn, selectedSquare, lastMove, status, pendingPromotion } = game;
-    const gameOver = status.kind === "checkmate" || status.kind === "stalemate";
+    const gameOver = isGameOver(status);
     const botTurn = bot && turn !== orientation;
     const [gameNumber, setGameNumber] = useState(0);
-    const [botSettings, setBotSettings] = useState(defaultBotSettings);
     const acceptBotMove = useCallback((move: BasicMove, expectedBoard: BoardState, turn: Color) => {
         dispatch({ type: "engine-move", move, expectedBoard, turn });
-    }, []);
+    }, [dispatch]);
     const turnName = turn === "white" ? "White" : "Black";
     const statusText = pendingPromotion ? `${turnName}: choose a promotion` : status.kind === "checkmate"
         ? `Checkmate — ${status.winner === "white" ? "White" : "Black"} wins`
-        : status.kind === "stalemate" ? "Stalemate — draw" : `${turnName} to move${status.kind === "check" ? " — in check" : ""}`;
+        : status.kind === "resigned" ? `${status.winner === "white" ? "White" : "Black"} wins by resignation`
+        : status.kind === "draw" ? status.reason === "agreement" ? "Draw by agreement" : status.reason === "insufficient-material" ? "Draw — insufficient material" : "Draw — 75 moves without a pawn move or capture" : status.kind === "stalemate" ? "Stalemate — draw" : `${turnName} to move${status.kind === "check" ? " — in check" : ""}`;
     const [pointer, setPointer] = useState({ x: 0, y: 0, mouse: false });
     const [movingRook, setMovingRook] = useState<number | null>(null);
     const [resultDismissed, setResultDismissed] = useState(false);
@@ -68,19 +80,20 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
         dispatch({ type: "restart", board: parseFen(STARTING_FEN) });
         focusStatus();
     }
-    return <div className={bot ? "bot-match" : undefined}><div className="game-board" onKeyDown={event => {
+    const shownMove = highlightedMove ?? lastMove;
+    return <div><div className="game-board" onKeyDown={event => {
         if (event.key === "Escape" && selectedSquare) { event.stopPropagation(); dispatch({ type: "click", square: selectedSquare }); setMovingRook(null); }
     }}>
-        <div className="board-player"><span className={`player-color ${topColor}`} /><strong>{bot ? "Rooke" : "Player 2"}</strong><span>{topColor === "black" ? "Black" : "White"} pieces</span></div>
-        <div className="board-status"><p ref={statusLabel} tabIndex={-1} role="status" aria-live="polite"><i className={`turn-dot ${turn}`} />{statusText}</p><span>{bot ? "vs Rooke" : "Local 1v1"}</span></div>
-        <div className="board-frame"><div className="chess-grid" aria-label={ruleset === "chaos" ? "Chaos Chess board" : "Normal Chess board"} inert={pendingPromotion !== null}>
+        <div className="board-player">{bot ? <Image src="/brand-rooke.svg" width={24} height={32} alt="" className="rooke-avatar" /> : <span className={`player-color ${topColor}`} />}<strong>{bot ? <>Rooke <span className="bot-rating" title="Provisional Classic chess rating">(1650)</span></> : analysis ? topColor === "white" ? "White" : "Black" : "Player 2"}</strong><span>{topColor === "black" ? "Black" : "White"} pieces</span></div>
+        <div className="board-status"><p ref={statusLabel} tabIndex={-1} role="status" aria-live="polite"><i className={`turn-dot ${turn}`} />{statusText}</p><span>{analysis ? "Analysis board" : bot ? "vs Rooke" : "Local 1v1"}</span></div>
+        <div className="board-frame"><div className="chess-grid" aria-label={ruleset === "chaos" ? "Chaos Chess board" : "Classic Chess board"} inert={pendingPromotion !== null}>
             {Array.from({ length: 64 }, (_, index) => {
                 const visualR = Math.floor(index / 8), visualC = index % 8;
                 const row = orientation === "black" ? 7 - visualR : visualR, col = orientation === "black" ? 7 - visualC : visualC;
                 const square = row * 8 + col, piece = board[square], selected = origin === square;
                 const legal = !showRookChoice && legalMoves.find(move => move.kind !== "rotate" && move.to === square);
-                const latest = lastMove?.from === square || lastMove?.to === square || (lastMove?.kind === "castle" && (lastMove.rookFrom === square || lastMove.rookTo === square));
-                return <button type="button" key={square} disabled={gameOver || pendingPromotion !== null || botTurn}
+                const latest = shownMove?.from === square || shownMove?.to === square || (shownMove?.kind === "castle" && (shownMove.rookFrom === square || shownMove.rookTo === square));
+                return <button type="button" key={square} disabled={locked || gameOver || pendingPromotion !== null || botTurn}
                     aria-label={`${"abcdefgh"[col]}${8 - row}${piece ? ` ${pieceColor(piece)} ${pieceDefinition(piece)!.label}` : " empty"}${legal ? legal.kind !== "rotate" && legal.promotion ? " promotion destination" : " legal destination" : ""}`}
                     aria-pressed={selected} className={`board-square ${(row + col) % 2 ? "dark" : "light"}${selected ? " selected" : latest ? " latest" : ""}`}
                     onPointerDown={event => setPointer({ x: event.clientX, y: event.clientY, mouse: event.pointerType === "mouse" })}
@@ -94,8 +107,8 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
         </div>
         {showRookChoice && <div ref={rookChoice} className="rook-choice" role="group" aria-label="Choose rook action" style={{ left: `clamp(110px, ${(visualCol + .5) * 12.5}%, calc(100% - 110px))`, top: visualRow < 4 ? `${(visualRow + 1) * 12.5}%` : undefined, bottom: visualRow >= 4 ? `${(8 - visualRow) * 12.5}%` : undefined }}>
             <p>Choose an action</p><div>
-                <button type="button" disabled={!legalMoves.some(move => move.kind !== "rotate")} onClick={() => { setMovingRook(origin); setPointer(p => ({ ...p, mouse: false })); }}><BoardPiece code={selectedPiece} /><span>Move</span></button>
-                <button type="button" disabled={!rotation} title={!rotation ? "Switching would leave your king in check" : "Uses one turn"} onClick={() => { dispatch({ type: "rotate" }); setMovingRook(null); }}>{Piece(selectedDefinition!.rotatesTo!, turn)}<span>Switch to {rotationDefinition!.label}</span></button>
+                <button type="button" disabled={locked || !legalMoves.some(move => move.kind !== "rotate")} onClick={() => { setMovingRook(origin); setPointer(p => ({ ...p, mouse: false })); }}><BoardPiece code={selectedPiece} /><span>Move</span></button>
+                <button type="button" disabled={locked || !rotation} title={!rotation ? "Switching would leave your king in check" : "Uses one turn"} onClick={() => { dispatch({ type: "rotate" }); setMovingRook(null); }}>{Piece(selectedDefinition!.rotatesTo!, turn)}<span>Switch to {rotationDefinition!.label}</span></button>
             </div><small>Switching uses one turn.</small>
         </div>}
         {pendingPromotion && <div ref={promotionChoice} className="promotion-choice" role="group" aria-labelledby="promotion-title"
@@ -109,21 +122,26 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
                 choices[(index + (event.shiftKey ? choices.length - 1 : 1)) % choices.length]?.focus();
             }}>
             <p id="promotion-title">Promote your pawn</p>
-            <div>{promotionPieces.map(piece => <button type="button" key={piece} aria-label={`Promote to ${piece}`} onClick={() => dispatch({ type: "promote", piece })}>
+            <div>{promotionPieces.map(piece => <button type="button" key={piece} disabled={locked} aria-label={`Promote to ${piece}`} onClick={() => dispatch({ type: "promote", piece })}>
                 {Piece(piece, pendingPromotion.color)}<span>{piece[0].toUpperCase() + piece.slice(1)}</span>
             </button>)}</div>
         </div>}
         </div>
-        <div className="board-player bottom"><span className={`player-color ${orientation}`} /><strong>{playerName}</strong><span>{orientation === "white" ? "White" : "Black"} pieces</span></div>
-        <div className="board-bottom"><p>{pendingPromotion ? "Choose a piece to finish your turn." : gameOver ? "Game over." : botTurn ? "Rooke is choosing a move." : "Select a piece, then its destination."}</p><div className="board-result-actions">
-            {gameOver && resultDismissed && <button className="quiet-button" onClick={() => setResultDismissed(false)}>View result</button>}
-            <button className="quiet-button" onClick={restart}><Icon name="replay" />{gameOver ? "New game" : "Restart"}</button>
-        </div></div>
-        {(status.kind === "checkmate" || status.kind === "stalemate") && !resultDismissed && <GameResultModal
-            status={status} playerColor={orientation} playerName={playerName} opponentName={bot ? "Rooke" : "Player 2"}
+        <div className="board-player bottom"><span className={`player-color ${orientation}`} /><strong>{analysis ? orientation === "white" ? "White" : "Black" : playerName}</strong><span>{orientation === "white" ? "White" : "Black"} pieces</span></div>
+        {!analysis && game.drawOffer && <div className="draw-offer" role="status"><p>{game.drawOffer === "white" ? "White" : "Black"} offers a draw. {game.drawOffer === "white" ? "Black" : "White"}, accept?</p><div>
+            <button className="quiet-button" onClick={() => dispatch({ type: "respond-draw", color: game.drawOffer === "white" ? "black" : "white", accept: true })}>Accept draw</button>
+            <button className="quiet-button" onClick={() => dispatch({ type: "respond-draw", color: game.drawOffer === "white" ? "black" : "white", accept: false })}>Decline draw</button>
+        </div></div>}
+        <div className="board-bottom"><p>{pendingPromotion ? "Choose a piece to finish your turn." : gameOver ? "Game over." : botTurn ? "Rooke is choosing a move." : analysis ? "Play either side, or play an engine suggestion." : "Select a piece, then its destination."}</p>
+            {!analysis && <GameActions finished={gameOver} drawDisabled={pendingPromotion !== null || game.drawOffer !== null}
+                onResign={() => dispatch({ type: "resign", color: bot ? orientation : turn })} onOfferDraw={bot ? undefined : () => dispatch({ type: "offer-draw", color: turn })} onRestart={restart} onSetup={onSetup}
+                onViewResult={gameOver && resultDismissed ? () => setResultDismissed(false) : undefined} />}
+        </div>
+        {!analysis && isGameOver(status) && !resultDismissed && <GameResultModal
+            status={status} playerColor={orientation} playerName={playerName} opponentName={bot ? "Rooke" : analysis ? topColor === "white" ? "White" : "Black" : "Player 2"}
             onPlayAgain={restart}
             onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
         />}
         {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
-    </div>{bot && <BotPanel key={gameNumber} board={board} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} finished={gameOver} settings={botSettings} onSettings={setBotSettings} onMove={acceptBotMove} />}</div>;
+    </div>{bot && <BotPanel key={gameNumber} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
 }

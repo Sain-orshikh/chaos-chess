@@ -64,9 +64,8 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <div className="profile-stats"><div><strong>{user?.elo?.toLocaleString() ?? "—"}</strong><span>Elo rating</span></div><div><strong>{user?.matches?.toLocaleString() ?? "—"}</strong><span>Matches</span></div><div><strong>{user?.wins?.toLocaleString() ?? "—"}</strong><span>Wins</span></div></div>
       <p className="nav-label">Play</p>
       <nav className="nav" aria-label="Game modes">
-        <button disabled><Icon name="flag" />Casual<span className="soon">Soon</span></button>
-        <button disabled title="Ranked Normal Chess is coming soon"><Icon name="rank" />Ranked Normal<span className="soon">Soon</span></button>
-        <button disabled title="Ranked Chaos Chess will apply twice the Normal Elo change"><Icon name="rank" />Ranked Chaos · 2× Elo<span className="soon">Soon</span></button>
+        <button disabled title="Chaos multiplayer is coming soon"><Icon name="flag" />Chaos<span className="soon">Soon</span></button>
+        <button disabled title="Classic Chess multiplayer is coming soon"><Icon name="rank" />Classic Chess<span className="soon">Soon</span></button>
         <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><Icon name="bot" />Play bot<span className="available" /></Link>
         <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><Icon name="person" />Local 1v1</Link>
       </nav>
