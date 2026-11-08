@@ -1,3 +1,4 @@
+import { publicUser } from "./auth.controller.js";
 import { logger } from "../logging/logger.js";
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
@@ -9,7 +10,7 @@ export const getUserProfile = async (req, res) => {
         const name = username(req.params.username);
         const user = await User.findOne({ username: name }).select("-password");
         if (!user) return res.status(404).json({ error: "User not found." });
-        return res.json(user);
+        return res.json(publicUser(user));
     } catch (error) {
         if (validationResponse(error, res)) return;
         return res.status(500).json({ error: "Could not load this profile." });
@@ -33,13 +34,13 @@ export const updateUser = async (req, res) => {
             return res.status(400).json({ error: "Username is already taken." });
         }
         if (changingPassword) {
-            if (!await bcrypt.compare(current, user.password)) return res.status(400).json({ error: "Current password is incorrect." });
+            if (!user.password || !await bcrypt.compare(current, user.password)) return res.status(400).json({ error: "Current password is incorrect." });
             user.password = await bcrypt.hash(next, 12);
         }
         if (image) user.profileImg = await uploadProfileImage(image, user._id);
         if (name) user.username = name;
         await user.save();
-        return res.json({ _id: user._id, username: user.username, profileImg: user.profileImg, elo: user.elo, matches: user.matches, wins: user.wins });
+        return res.json(publicUser(user));
     } catch (error) {
         if (validationResponse(error, res)) return;
         if (error.code === 11000) return res.status(400).json({ error: "Username is already taken." });

@@ -5,8 +5,8 @@ import { generateTokenAndSetCookie, clearTokenCookie } from "../utils/generateTo
 import { fields, username, password, profileImage, validationResponse } from "../security/validation.js";
 import { uploadProfileImage } from "../utils/uploadProfileImage.js";
 
-function publicUser(user) {
-    return { _id: user._id, username: user.username, profileImg: user.profileImg, elo: user.elo, matches: user.matches, wins: user.wins };
+export function publicUser(user) {
+    return { _id: user._id, username: user.username, displayName: user.displayName || user.username, hasPassword: !user.googleId, profileImg: user.profileImg, elo: user.elo, matches: user.matches, wins: user.wins };
 }
 
 export const signup = async (req, res) => {

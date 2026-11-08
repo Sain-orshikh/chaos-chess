@@ -9,9 +9,11 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: true,
+            required: function () { return !this.googleId; },
             minLength: 6,
         },
+        googleId: { type: String, unique: true, sparse: true },
+        displayName: { type: String, maxLength: 100 },
         profileImg: {
             type: String,
             default: "",

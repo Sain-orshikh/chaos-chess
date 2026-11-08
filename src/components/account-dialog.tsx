@@ -45,6 +45,7 @@ export default function AccountDialog({ action, onClose }: { action: AccountActi
     <div className="dialog-heading"><h2 id="account-title">{title}</h2><button className="icon-button" aria-label="Close account settings" onClick={onClose} disabled={busy}><Icon name="close" /></button></div>
     {(mode === "login" || mode === "signup") && <p className="dialog-note">You can also play anonymously. Local games are always unrated.</p>}
     {mode === "picture" && <p className="dialog-note">JPG, PNG, WebP, or GIF. Up to 2 MB.</p>}
+    {(mode === "login" || mode === "signup") && <a className="google-sign-in" href="/api/auth/google">Continue with Google</a>}
     <form onSubmit={submit}>
       {(mode === "login" || mode === "signup") && <>
         <label>Username<input name="username" autoComplete="username" pattern="[A-Za-z0-9_]{3,24}" minLength={3} maxLength={24} title="3–24 letters, numbers, or underscores" required disabled={busy} /></label>

@@ -1,4 +1,4 @@
-export type User = { _id: string; username: string; profileImg: string; elo: number; matches?: number; wins?: number };
+export type User = { _id: string; username: string; displayName?: string; hasPassword?: boolean; profileImg: string; elo: number; matches?: number; wins?: number };
 export type ImageUpload = { name: string; type: string; data: string };
 
 export class ApiError extends Error {

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import Icon from "./icon";
 import NavIcon from "./nav-icon";
 import { useAuth } from "./auth-provider";
@@ -19,6 +19,18 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
   const profileRef = useRef<HTMLDivElement>(null);
   const aside = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const authError = url.searchParams.get("auth_error");
+    if (authError) {
+      startTransition(() => {
+        setError(authError === "google_cancelled" ? "Google sign-in was cancelled." : "Google sign-in failed. Please try again.");
+        setProfileOpen(true);
+      });
+      url.searchParams.delete("auth_error");
+      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
+  }, []);
   useEffect(() => {
     const query = matchMedia("(max-width: 950px)");
     function sync() { if (aside.current) aside.current.inert = query.matches ? !mobileOpen : collapsed; }
@@ -51,12 +63,12 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <div className="profile-container" ref={profileRef}>
         <button className="profile-toggle" aria-expanded={profileOpen} aria-controls="profile-menu" onClick={() => setProfileOpen(!profileOpen)}>
           <span className="avatar">{user?.profileImg ? <Image src={user.profileImg} alt="" width={43} height={43} unoptimized /> : <Icon name="person" />}</span>
-          <span className="profile-copy"><strong>{checking ? "Loading profile…" : user?.username ?? "Anonymous"}</strong><small>{user ? "Your profile" : "Playing as guest"}</small></span><Icon name="chevron" />
+          <span className="profile-copy"><strong>{checking ? "Loading profile…" : user?.displayName || user?.username || "Anonymous"}</strong><small>{user ? "Your profile" : "Playing as guest"}</small></span><Icon name="chevron" />
         </button>
         {profileOpen && <div className="profile-menu" id="profile-menu">
           {user ? <>
             <button onClick={() => openAccount("picture")}>Change profile picture</button>
-            <button onClick={() => openAccount("password")}>Change password</button>
+            {user.hasPassword !== false && <button onClick={() => openAccount("password")}>Change password</button>}
             <button disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await signOut(); setProfileOpen(false); } catch (e) { setError(e instanceof Error ? e.message : "Could not sign out."); } finally { setBusy(false); } }}><Icon name="logout" />{busy ? "Signing out…" : "Sign out"}</button>
           </> : <><button onClick={() => openAccount("login")}>Sign in</button><button onClick={() => openAccount("signup")}>Create account</button><small>Anonymous games do not affect Elo.</small></>}
           {error && <p className="form-error" role="alert">{error}</p>}

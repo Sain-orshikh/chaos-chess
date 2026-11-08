@@ -1609,3 +1609,6 @@ h1, h2, h3 {
 
 .nav-symbol { width: 20px; height: 24px; flex-shrink: 0; object-fit: contain; color: var(--foreground); }
 .nav-brand-symbol { filter: brightness(0) invert(1); }
+
+.google-sign-in { display: block; text-align: center; padding: 12px 16px; margin: 16px 0; border: 1px solid currentColor; border-radius: 8px; text-decoration: none; font-weight: 600; }
+.google-sign-in:hover { background: rgba(128, 128, 128, .15); }
