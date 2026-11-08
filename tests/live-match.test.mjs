@@ -8,10 +8,42 @@ import { initialMatch, transition, presence, settle, clockAt, canPossiblyMate } 
 import { legalMovesForPiece, createGame, parseFen } from '../backend/generated/chess.js';
 import { createMatchService } from '../backend/live/service.js';
 import { attachLiveSockets } from '../backend/live/transport.js';
+import Game from '../backend/models/game.model.js';
 const A = 'aaaaaaaaaaaaaaaaaaaaaaaa', B = 'bbbbbbbbbbbbbbbbbbbbbbbb', ID = 'cccccccccccccccccccccccc';
 const start = () => initialMatch('normal', 300_000, 2000, 1_000_000);
 function request(state, type, extra = {}, id = `request-${state.revision}`) { return { type, id, revision: state.revision, ...extra }; }
 function move(state, from, to, now = 1_001_000, extra = {}) { const m = legalMovesForPiece(state.game.board, from, state.game.castling, state.game.standard).find(m => m.to === to && (!extra.promotion || m.promotion === extra.promotion)); assert.ok(m); return transition(state, state.game.turn, request(state, 'move', { move: m }), now); }
+test('Mongoose saves preserve empty presence maps before and after connections', async () => {
+    const insert = Game.collection.insertOne;
+    let saved;
+    Game.collection.insertOne = async document => { saved = document; return { acknowledged: true, insertedId: document._id }; };
+    try {
+        for (const live of [start(), presence(start(), 'white', 'one', true, 1_000_000)]) {
+            await new Game({ playerA: A, playerB: B, live }).save();
+            assert.deepEqual(saved.live.presence, live.presence);
+        }
+    } finally { Game.collection.insertOne = insert; }
+});
+test('existing minimized matches reconnect and expire using their original deadlines', async () => {
+    const db = memory(), bus = infra(); let time = 1_000_000;
+    const service = createMatchService({ model: db.model, infra: bus, now: () => time });
+    await service.create({ id: ID, white: { _id: A }, black: { _id: B }, ruleset: 'normal' });
+    delete db.docs.get(ID).live.presence;
+    time += 1000;
+    const snapshot = await service.snapshot(ID, A);
+    assert.deepEqual(snapshot.connected, { white: false, black: false });
+    const connected = await service.connection(ID, A, 'white-one', true);
+    assert.deepEqual(connected.connected, { white: true, black: false });
+    // Simulate a partial minimized map: keep the live white lease and omit black.
+    delete db.docs.get(ID).live.presence.black;
+    assert.deepEqual((await service.snapshot(ID, B)).connected, { white: true, black: false });
+    time = 1_060_000;
+    await service.deadline(ID);
+    const stored = db.docs.get(ID);
+    assert.equal(stored.live.outcome.at, 1_060_000);
+    assert.equal(stored.live.outcome.reason, 'abandoned');
+    assert.equal(stored.rated, false);
+});
 test('server accepts one legal source move, keeps clocks and increment, rejects stale/wrong-side/illegal input', () => {
     const s = start(), next = move(s, 52, 36);
     assert.equal(next.game.turn, 'black'); assert.equal(next.clocks.white, 301_000); assert.equal(next.movesBy.white, 1); assert.equal(next.history.length, 1);

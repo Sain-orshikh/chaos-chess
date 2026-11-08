@@ -14,6 +14,9 @@ export function createMatchService({ model = Game, infra, now = Date.now, finali
         if (!/^[a-f0-9]{24}$/i.test(id)) throw new MatchError('Invalid match ID.', 400);
         const document = await model.findById(id).lean();
         if (!document?.live) throw new MatchError('Match not found.', 404);
+        // Older saves minimized empty presence maps. Restore only these omitted maps;
+        // keep the original absence timestamps so reconnects cannot reset deadlines.
+        document.live.presence = { white: {}, black: {}, ...document.live.presence };
         return document;
     }
     async function complete(document) {

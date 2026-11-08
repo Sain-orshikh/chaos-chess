@@ -22,7 +22,8 @@ const gameSchema = new mongoose.Schema({
         type: new mongoose.Schema({ a: ratingChangeSchema, b: ratingChangeSchema }, { _id: false }),
         default: null,
     },
-}, { timestamps: true });
+// Empty presence maps are required live state, including before either player connects.
+}, { timestamps: true, minimize: false });
 
 gameSchema.index({ playerA: 1, status: 1 });
 gameSchema.index({ playerB: 1, status: 1 });
