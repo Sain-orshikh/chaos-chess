@@ -59,3 +59,50 @@ Open `http://127.0.0.1:5001/test-login?side=white` and `http://localhost:5001/te
 The current implementation keeps one periodic deadline chain per live match, at most about once every 20 seconds, plus earlier flags and delivery retries. At 1,000 deliveries/day, this alone is roughly 5.5 aggregate match-hours/day before retries; a five-minute match uses about 15 periodic deliveries. Redis publishes on presence/move updates and has one subscription per player tab. Measure actual Redis command/egress and QStash delivery counters with a configured staging account before inferring capacity. No real provider traffic or billing was measured during local verification.
 
 Production credentials, a deployed smoke test and the matchmaking caller remain activation steps. Local test success does not establish cross-instance delivery or production routing.
+
+## Matchmaking
+
+`/chaos` and `/classic` are account-only matchmaking lobbies. Supported clocks are
+5+0 and 10+0; there are four separate queues. Both queues use the existing shared
+account Elo, read from Mongo rather than accepted from the client. Colors use a
+server-side cryptographic coin flip.
+
+The mutual rating window starts at 100, grows by 100 every 5 seconds, caps at 800,
+and becomes unrestricted at 60 seconds. Both entrants must allow the rating gap.
+Oldest compatible ticket wins, then nearest rating. The matcher examines up to
+128 oldest candidates within the caller's range per heartbeat. Search heartbeats
+run every 5 seconds and renew a 45-second lease. A vanished browser expires;
+a reload within the lease retains the original join time. Cancel acts across tabs.
+A pairing already committed takes precedence over cancellation.
+
+The implementation deliberately uses Mongo for authoritative queue tickets as well
+as games: one transaction updates both tickets and creates the match. This avoids
+an atomicity gap between Redis reservations and Mongo creation. The account ID is
+the ticket's unique primary key; all modes, tabs and rematch creation share that
+lock. Mongo must support transactions (as already required for Elo). Expired
+queued records are ignored and reused; matched records remain recoverable until
+replaced after the game ends. No QStash jobs are created for queue waiters.
+Existing game deadline callbacks are scheduled before transaction commit. A
+failed schedule aborts the transaction, preserving previous queue positions.
+
+Endpoints: public GET `/api/matchmaking/counts`; authenticated POST `/presence`,
+`/join` (`ruleset`, `timeMs`), `/status`, `/cancel`. All are under `/api/matchmaking`.
+Status resumes active matches (including rematches), and performs a matching pass
+for a queued user. Duplicate joins retain join time; switching queues requires
+cancelling first. Counts expose only aggregate values, never account IDs/ratings.
+
+Redis maintains an approximate global count of recently visible authenticated
+accounts. Each account has one sorted-set member, refreshed every 30 seconds
+and aged out after 75 seconds. This includes players browsing bot/local pages;
+searching is a separate count. Hidden/offline tabs can age out. Guest users are
+not counted. Provider errors display unavailable counts rather than fabricated
+zeroes. Counts and matchmaking still need deployed Redis/QStash/Mongo verification.
+
+Local test: `node tests/matchmaking.test.mjs`. Browser fixture (no real accounts,
+ratings or provider writes): `LIVE_BROWSER_FIXTURE=1 node
+ tests/fixtures/live-matchmaking-browser.mjs`, then run Next with
+`API_BACKEND_URL=http://127.0.0.1:5002 npm run dev -- --hostname 127.0.0.1 --port 3007`.
+Visit `http://127.0.0.1:5002/test-login?side=white` and
+`http://localhost:5002/test-login?side=black` to isolate two synthetic accounts.
+
+Queue presence is tracked per matchmaking tab (maximum eight per account). Navigation or pagehide removes only that tab’s lease; the last departure immediately prevents new pairings. The ticket retains its original waiting time for up to 45 seconds so reloads/brief interruptions can resume. A failed leave beacon falls back to lease expiration. A separate open matchmaking tab keeps the account searching. Explicit Cancel removes the account’s search across all tabs. `/api/matchmaking/leave`, `/join` and `/status` accept the tab connection UUID; queued counts exclude tickets with no live tab lease.

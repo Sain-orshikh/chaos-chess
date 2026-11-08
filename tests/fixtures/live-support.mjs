@@ -4,7 +4,7 @@ export function memory() {
     return { docs, model: {
         findById(id) { return { async lean() { return structuredClone(docs.get(String(id)) || null); } }; },
         findOneAndUpdate(query, update) { return { async lean() { const old = docs.get(String(query._id)); if (!old || old.live.version !== query['live.version']) return null; const next = { ...old, ...structuredClone(update.$set) }; docs.set(String(query._id), next); return structuredClone(next); } }; },
-        async create(document) { const doc = structuredClone({ ...document, _id: String(document._id) }); docs.set(doc._id, doc); return doc; },
+        async create(document) { if (Array.isArray(document)) return Promise.all(document.map(item => this.create(item))); const doc = structuredClone({ ...document, _id: String(document._id) }); docs.set(doc._id, doc); return doc; },
         async updateOne(query, update) { if (!docs.has(String(query._id))) docs.set(String(query._id), structuredClone({ ...update.$setOnInsert, _id: String(query._id) })); },
     } };
 }

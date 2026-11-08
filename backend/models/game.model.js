@@ -24,4 +24,7 @@ const gameSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+gameSchema.index({ playerA: 1, status: 1 });
+gameSchema.index({ playerB: 1, status: 1 });
+
 export default mongoose.model("Game", gameSchema);

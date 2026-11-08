@@ -1654,3 +1654,27 @@ h1, h2, h3 {
 @media (max-width: 1150px) { .online-match-layout { grid-template-columns: minmax(0, 1fr); max-width: 700px; margin: auto; } }
 @media (max-width: 520px) { .online-preview-note { flex-direction: column; align-items: flex-start; padding: 12px; } .player-clock { font-size: 22px; padding: 8px 10px; } .online-match-layout .board-player { gap: 9px; } .online-match-layout .board-player > span:not(.board-avatar) { display: none; } }
 .online-match-layout .game-board { width: 100%; min-width: 0; }
+
+/* Online matchmaking */
+.matchmaking-page { width: min(100%, 650px); margin: 32px auto; padding: 0 20px; }
+.matchmaking-heading { display: flex; align-items: center; gap: 18px; }
+.matchmaking-heading .nav-symbol { width: 38px; height: 54px; }
+.matchmaking-heading h1 { margin: 2px 0; font-size: clamp(28px, 4vw, 38px); }
+.matchmaking-heading .eyebrow { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: #aba9b0; }
+.matchmaking-intro, .matchmaking-footnote, .matchmaking-note { color: #aaa7b0; line-height: 1.6; }
+.matchmaking-counts { display: flex; flex-wrap: wrap; gap: 12px 26px; margin: 28px 0 18px; font-size: 14px; color: #aaa7b0; }
+.matchmaking-counts b { color: var(--foreground); }
+.matchmaking-card { border: 1px solid #38353e; background: #211f26; border-radius: 16px; padding: clamp(20px, 4vw, 32px); }
+.matchmaking-card h2 { margin: 0 0 24px; font-size: 20px; }
+.matchmaking-times { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.matchmaking-times button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px; border: 1px solid #47424e; background: #29262f; color: var(--foreground); border-radius: 10px; cursor: pointer; }
+.matchmaking-times button strong { font-size: 30px; }
+.matchmaking-times button span { color: #aaa7b0; font-size: 13px; }
+.matchmaking-times button[aria-pressed="true"] { border-color: #df2634; background: #38232b; box-shadow: inset 0 0 0 1px #df2634; }
+.matchmaking-times button:disabled { cursor: default; }
+.matchmaking-primary { width: 100%; margin-top: 12px; border: 0; border-radius: 8px; background: #df2634; color: white; font: inherit; font-weight: 650; padding: 14px; cursor: pointer; }
+.matchmaking-primary:disabled { opacity: .55; cursor: wait; }
+.matchmaking-note, .matchmaking-footnote { font-size: 13px; }
+.matchmaking-search { margin-top: 24px; }
+.matchmaking-search small { color: #c5c1ca; }
+.search-pulse { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #df2634; }
