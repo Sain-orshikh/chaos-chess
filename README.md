@@ -1,6 +1,6 @@
 # Chaos Chess
 
-Next.js interface with an Express / MongoDB account backend. The Play bot page currently runs local 1v1 using the existing custom chess engine. Bot opponents, Casual, Ranked, Chaos mode, and Leaderboard are unavailable.
+Next.js interface with an Express / MongoDB account backend, online Classic/Chaos play, and a cached Elo leaderboard. The Play bot page includes Rooke using the existing custom chess engine.
 
 ## Run locally
 
@@ -93,3 +93,15 @@ Piece-square tables live in `utils/positional_eval.ts`. Their small raw bonuses 
 Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JWT_SECRET`, and `MONGODB_URI` for the API service, locally and in Vercel. In Google Cloud, add **Authorized redirect URI** `https://havoc-chess.vercel.app/api/auth/google/callback` (the domain alone is not sufficient). For local development, also add `http://localhost:3000/api/auth/google/callback` and run both the web and API servers. Production sign-in always returns to `https://havoc-chess.vercel.app`.
 
 The account dialog offers **Continue with Google**. Google accounts store the verified Google subject and display name; the sidebar and game board show that name. Existing password accounts keep their usernames. Accounts are not automatically linked by name or email. MongoDB must allow the unique sparse `googleId` index to be created. If Google consent is in Testing mode, add the intended test users in Google Cloud before testing.
+
+### Leaderboard
+
+`/leaderboard` lists the top 100 accounts by Elo with games and wins. Players qualify after 5 completed rated online
+matches; equal Elo shares rank. One MongoDB
+snapshot refreshes on demand after five minutes, coordinated across API instances
+by an expiring lease. Vercel caches the public response for one minute. Pagination
+and the personal Elo gap use the downloaded list without more ranking queries.
+No Redis commands, QStash jobs or avatar delivery are added for the leaderboard.
+The page footer explains the 6–7 minute delay and that standings are not live.
+See [the architecture and free-tier budget](docs/leaderboard-plan.md) for rollout
+checks, index requirements, failure behavior, and usage estimates.

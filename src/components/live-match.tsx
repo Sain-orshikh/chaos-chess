@@ -7,18 +7,24 @@ import Piece from './piece';
 import GameActions from './game-actions';
 import { gameReducer, isGameOver, type GameAction, type GameState } from './common/game_state';
 import type { BasicMove, Color, Ruleset } from './utils/types';
-import type { RatingChange } from '../lib/api';
+import type { AchievementState, RatingChange } from '../lib/api';
+import { mergeAchievements } from '../lib/badges';
+import { useAuth } from './auth-provider';
+import { BadgeUnlocks } from './badge-strip';
 
 type Snapshot = { gameId: string; color: Color; ruleset: Ruleset; revision: number; game: GameState; history: BasicMove[];
     clocks: Record<Color, number>; serverNow: number; timeMs: number; incrementMs: number;
     connected: Record<Color, boolean>; outcome: { result: Color | 'draw' | null; reason: string } | null;
     rematch: Color | null; nextGameId: string | null; rated: boolean; ratings: { a: RatingChange; b: RatingChange } | null;
-    players: Record<Color, { name: string; image: string; rating: number }> };
+    achievements?: AchievementState | null;
+    players: Record<Color, { name: string; image: string; rating: number; equippedBadges?: string[] }> };
 const opposite = (color: Color): Color => color === 'white' ? 'black' : 'white';
 const square = (index: number) => `${'abcdefgh'[index % 8]}${8 - Math.floor(index / 8)}`;
 function timeLabel(ms: number) { const seconds = Math.ceil(Math.max(0, ms) / 1000); return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; }
 export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameId: string }) {
     const router = useRouter();
+    const { user, setUser } = useAuth();
+    const syncedAchievements = useRef('');
     const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
     const [game, setGame] = useState<GameState | null>(null);
     const [connected, setConnected] = useState(false), [waiting, setWaiting] = useState(false);
@@ -26,6 +32,13 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
     const [elapsed, setElapsed] = useState(0);
     const current = useRef<Snapshot | null>(null), preview = useRef<GameState | null>(null);
     const socket = useRef<WebSocket | null>(null), pending = useRef<object | null>(null), receivedAt = useRef(0);
+    useEffect(() => {
+        const awards = snapshot?.achievements;
+        const key = `${gameId}:${user?._id}`;
+        if (!awards || awards.userId !== user?._id || syncedAchievements.current === key) return;
+        syncedAchievements.current = key;
+        setUser(current => mergeAchievements(current, awards));
+    }, [snapshot?.achievements, gameId, user?._id, setUser]);
     useEffect(() => {
         let disposed = false, timer: ReturnType<typeof setTimeout>, heartbeat: ReturnType<typeof setInterval>, attempt = 0;
         function connect() {
@@ -83,7 +96,7 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
     const clocks = { ...snapshot.clocks };
     if (!snapshot.outcome) clocks[snapshot.game.turn] = Math.max(0, clocks[snapshot.game.turn] - elapsed);
     const rating = snapshot.ratings?.[color === 'white' ? 'a' : 'b'];
-    const ratingSummary = <p className="result-unrated">{snapshot.outcome?.reason === 'abandoned' ? 'Abandoned · No rating change' : !snapshot.rated ? 'Unrated match' : rating ? `Rating ${rating.before} → ${rating.after} (${rating.change >= 0 ? '+' : ''}${rating.change})` : 'Rating update pending'}</p>;
+    const ratingSummary = <><p className="result-unrated">{snapshot.outcome?.reason === 'abandoned' ? 'Abandoned · No rating change' : !snapshot.rated ? 'Unrated match' : rating ? `Rating ${rating.before} → ${rating.after} (${rating.change >= 0 ? '+' : ''}${rating.change})` : 'Rating update pending'}</p><BadgeUnlocks awards={snapshot.achievements?.badges} /></>;
     return <section className="online-match-page">
         <div className="online-match-layout"><Board game={game} onAction={onAction} ruleset={ruleset} orientation={orientation} locked={!connected || waiting || game.turn !== color}
             online={{ players: snapshot.players, color, live: true, clocks: { white: timeLabel(clocks.white), black: timeLabel(clocks.black) }, ratingSummary,

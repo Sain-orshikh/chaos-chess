@@ -18,6 +18,7 @@ const gameSchema = new mongoose.Schema({
     status: { type: String, enum: ["playing", "finished"], default: "playing" },
     result: { type: String, enum: ["a", "b", "draw"], default: null },
     finalizedAt: { type: Date, default: null },
+    achievements: { type: mongoose.Schema.Types.Mixed, default: null },
     ratings: {
         type: new mongoose.Schema({ a: ratingChangeSchema, b: ratingChangeSchema }, { _id: false }),
         default: null,

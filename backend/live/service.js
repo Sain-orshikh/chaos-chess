@@ -4,6 +4,7 @@ import { finalizeGame } from '../controllers/user.controller.js';
 import { logger } from '../logging/logger.js';
 import { initialMatch, settle, transition, presence, publicMatch, MatchError } from './state.js';
 import MatchTicket from '../matchmaking/model.js';
+import { equippedBadges } from '../badges/rules.js';
 export function member(document, userId) {
     if (String(document.playerA) === String(userId)) return 'white';
     if (String(document.playerB) === String(userId)) return 'black';
@@ -106,4 +107,4 @@ export function createMatchService({ model = Game, infra, now = Date.now, finali
         async deadline(id) { return update(id, null); },
     };
 }
-function player(user) { return { name: user.displayName || user.username, image: user.profileImg || '', rating: user.elo }; }
+function player(user) { return { name: user.displayName || user.username, image: user.profileImg || '', rating: user.elo, equippedBadges: equippedBadges(user) }; }

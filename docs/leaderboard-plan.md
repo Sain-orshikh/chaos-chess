@@ -1,6 +1,6 @@
-# Leaderboard proposal
+# Leaderboard architecture
 
-Status: design and architecture only; implementation awaits design confirmation.
+Status: implemented locally with the approved Contenders layout. Deployed CDN/cache and provider usage verification remain rollout checks.
 Reviewed: 8 November 2026. Provider allowances below are public free-tier limits,
 not verified balances in this project's accounts.
 
@@ -14,32 +14,35 @@ not verified balances in this project's accounts.
   time-control rankings would require new rating data and a migration policy.
 - Top 100, ordered by Elo descending; 25 rows per page, paginated locally from
   one downloaded snapshot. No arbitrary limit, sort, search, or date queries.
-- Proposed qualification: 10 completed rated online games. This is a product
-  default for confirmation, not an existing rule. Bot/local games do not count.
-  Existing server finalization increments `matches` only for rated games.
+- Players qualify after 5 completed rated online matches. Rank eligible players
+  by Elo alone; wins are display statistics, never extra ranking weights.
+  Bot/local games do not count toward qualification or change ratings.
 - Equal Elo shares competition rank (1, 1, 3). `_id` ascending provides stable
   ordering within ties; the list remains capped at 100 even at a tied cutoff.
-  State this in the ranking help. Qualification and tie policy are versioned.
-- Columns: rank, player, Elo, rated games, win rate (`wins / matches`). A win
-  rate is the percentage won, not the Elo score; draws are not counted as wins.
+  State this in the ranking help. Ranking and tie policy are versioned.
+- Columns: rank, player, Elo, rated games, and number of wins.
 - Initial avatars in v1: consistent with the existing avatar fallback and no
   leaderboard image traffic. Display names are escaped text and bounded; expose
   an account handle when needed to disambiguate duplicate display names.
 - Personal strip computed in the browser from the snapshot and existing auth:
-  ranked users see their snapshot entry; other qualified users see “Outside the
-  top 100”; others see qualification progress. No global exact-rank count query.
+  players below 5 matches see their remaining matches and progress; qualified
+  ranked users see their snapshot entry; other qualified users see the Elo needed to clear the
+  100th entry: `cutoffElo - currentElo + 1`. If their Elo already clears it, say
+  that standings need to refresh. This is a moving target, never a guaranteed
+  number of wins. If fewer than 100 players exist, new users appear on refresh.
+  No global exact-rank count query.
   Snapshot values and current account values must be labeled separately when
   they differ. Keep personal content outside the shared API response.
-- Guests can read the list. Timestamp and qualification note remain visible.
+- Guests can read the list. Timestamp and ranking note remain visible.
   Copy: “Refreshes about every 5 minutes”; never imply live ranking.
 - Recommended layout: **Contenders**, three compact leaders above the standings.
   Alternative: **Standings**, the table immediately below the heading, with the
   first three ranks accented. Both use the same backend and fields.
 - Mobile: existing navigation drawer; no podium grid squeezed into columns.
   Stack the leaders and show rank, player, Elo as primary row content, with
-  games/win rate on a second line. No horizontal scrolling needed.
-- Explicit states: loading skeleton, no qualified players, fewer than three
-  players, guest, qualification progress, outside top 100, refresh failure with
+  games/wins on a second line. No horizontal scrolling needed.
+- Explicit states: loading skeleton, no players, fewer than three
+  players, guest, outside top 100, refresh failure with
   retained data and timestamp, and unavailable with Retry when no data exists.
   Preview players are fictional and must never ship as fallback rankings.
 
@@ -79,28 +82,31 @@ Browser → Vercel CDN → public Express endpoint → one Mongo snapshot docume
 
 ### Data and index
 
-New `leaderboardSnapshots` collection, one `_id: "global:v1"` document per
+New `leaderboardsnapshots` collection, one `_id: "global:v3"` document per
 environment/database:
 
 ```text
-schemaVersion, generatedAt, nextRefreshAt, entries[<=100],
+_id (policy version), generatedAt, nextRefreshAt, entries[<=100],
 leaseOwner, leaseUntil, nextAttemptAt
 ```
 
 Entries expose only an opaque account ID (for local self matching), display
 name/handle, Elo, matches, wins and rank. Never return password/hash, Google ID,
-email, tokens, provider credentials, or an entire user document. Target serialized
-response <=25 KB, with explicit size validation. No avatar URLs in v1.
+email, tokens, provider credentials, or an entire user document. Expected typical serialized
+response is about 25 KB; a 64 KB safety cap accommodates long Unicode display
+names, with explicit size validation. The estimates below assume 25 KB and must
+be scaled to the measured response size. No avatar URLs in v1.
 
-Proposed user index: `{ elo: -1, _id: 1 }` with
-`partialFilterExpression: { matches: { $gte: 10 } }`. Query explicitly includes
-the same qualification predicate, projects allowed fields, sorts by that index,
-limits to 100, uses lean results and `maxTimeMS: 2000`. Verify with
-`explain("executionStats")` that it uses the index, avoids a blocking sort, and
-examines about 100 qualifying documents rather than all users. A changed
-qualification rule requires an index/policy version change. Build the index once
-during rollout, not per request. It adds storage and updates during settlement;
-measure index size in Atlas before scaling user count.
+User index: `{ elo: -1, _id: 1 }`, named `leaderboard_eligible_elo`, with
+`partialFilterExpression: { matches: { $gte: 5 } }`. The query filters
+`matches >= 5` before sorting and limiting to 100, projects allowed fields, and sorts by this index,
+limits to 100, uses lean results and `maxTimeMS: 2000`. The implementation awaits
+Mongoose model initialization before the first refresh, then explicitly hints the
+index so an unavailable index fails rather than silently scanning all accounts.
+Model initialization is reused, not an index rebuild per request. Verify with
+`explain("executionStats")` during rollout that the query avoids a blocking sort
+and examines about 100 documents. The index adds storage and updates during
+settlement; measure its size in Atlas before scaling user count.
 
 ### Refresh protocol and failure handling
 
@@ -172,7 +178,9 @@ outside a session-specific Server Component cache.
 
 Download all 100 once, paginate 25 locally, and compute the personal strip locally.
 Recheck only on entry or when returning to a visible tab after five minutes;
-deduplicate simultaneous fetches and reuse in-session data for five minutes.
+deduplicate simultaneous fetches and reuse in-session data only until the
+snapshot’s own freshness window ends (at most five minutes, with a ten-second
+minimum to avoid repeated requests when the CDN returns an older snapshot).
 No interval polling while the page sits open. Age text still updates locally and
 becomes “Standings may be out of date” once older than seven minutes. Re-entering
 or returning to a tab can fetch again. No user-facing “force database refresh”.
@@ -264,11 +272,13 @@ Avatars can be enabled later after choosing a budget. Example: 25 images × 5 KB
 transformations; 100 avatars eager-loaded would be ~50 GB. Browser caching/lazy
 loading help, but should not be assumed as the only protection.
 
-## Implementation sequence after confirmation
+## Implementation and rollout checks
 
-1. Confirm layout and product defaults (100 entries, 10 rated games, combined
-   rating, five-minute freshness, initials). Do not change Elo initialization.
-2. Add explicit snapshot schema, partial user index and refresh service with
+1. Approved defaults: Contenders layout, 100 entries, 5 completed rated matches required, Elo-only
+   ordering, wins column, five-minute freshness, initials. Elo initialization is
+   unchanged. Footer explains that changes may take 6–7 minutes and the page is
+   not live.
+2. Add explicit snapshot schema, user ranking index and refresh service with
    token-fenced lease, bounded query and shared retry backoff.
 3. Add isolated public route/middleware and response projection/cache headers.
 4. Add page, local pagination, personal strip, mobile layout and all UI states;
@@ -277,7 +287,7 @@ loading help, but should not be assumed as the only protection.
 5. Verify before rollout: concurrent cold starts/expiry produce one refresh;
    expired worker cannot publish; failures back off and retain timestamps;
    no private fields or cookies leak; invalid queries do not touch Mongo;
-   ties/100-entry cutoff/qualification and win rates are correct; local/bot
+   ties/100-entry cutoff/the 4/5-match qualification boundary and wins are correct; local/bot
    games remain unrated. Use fake stores to avoid consuming cloud quotas in tests.
 6. Run appropriate existing tests, lint/build, and keyboard/mobile checks at
    360px and desktop. On a deployed preview verify the Services route emits
@@ -295,3 +305,32 @@ keeping timestamp copy accurate. Adjust thresholds to the remaining monthly or
 rolling-week window. CDN miss rate and presence may matter much more than top-100
 query count. If small-site traffic stays within these estimates, no extra paid
 service is needed; exact headroom requires the project's provider dashboards.
+
+
+## Local verification
+
+`npm test` includes `tests/leaderboard.test.mjs`, using fake stores and local HTTP
+to verify refresh coordination, stale reads, retry backoff, expired worker fencing,
+public projection, shared-rank ties, five-match eligibility, cache headers, and
+rejection of query variants before database access. No cloud quota is consumed.
+
+For browser checks, run `LEADERBOARD_BROWSER_FIXTURE=1 node
+tests/fixtures/live-leaderboard-browser.mjs`, then Next with
+`API_BACKEND_URL=http://127.0.0.1:5004 npm run dev -- --hostname 127.0.0.1 --port 3008`.
+The fixture serves fictional accounts and supports ranked/outside/guest/empty/few/
+error states via its local `/__fixture/:state` endpoint. It is never imported by
+production code. Deployed cache HIT behavior and real provider balances cannot be
+verified through this fixture.
+
+Validation completed locally: full existing test suite, 11 leaderboard regression
+checks, production build, and desktop/360px browser checks covering pagination,
+ranked and outside-top-100 accounts, guests, empty/two-player lists, and errors.
+Lint has no errors; the existing generated engine unused-variable warning remains.
+Browser screenshots use fictional fixture data. Real Atlas index execution and
+Vercel CDN hits remain deployment verification items.
+
+Qualification update: five completed rated matches are now required. The snapshot
+key is `global:v3`, so older snapshots that included unqualified accounts are not
+reused. The new partial index is created through model initialization. An existing
+`leaderboard_elo` index from a previous deployment is not dropped automatically;
+it can be retired separately after verifying the new index in production.

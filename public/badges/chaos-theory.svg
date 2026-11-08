@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="192" viewBox="0 0 126 144" role="img" aria-labelledby="badge-title">
+<title id="badge-title">Chaos Theory</title>
+<defs><linearGradient id="shield" x2=".8" y2="1"><stop stop-color="#33252d"/><stop offset="1" stop-color="#19171d"/></linearGradient><clipPath id="inside"><polygon points="19,2 107,2 124,20 124,100 104,122 63,141 22,122 2,100 2,20"/></clipPath></defs>
+<polygon points="18,0 108,0 126,19 126,101 105,124 63,144 21,124 0,101 0,19" fill="#69616e"/><polygon points="19,2 107,2 124,20 124,100 104,122 63,141 22,122 2,100 2,20" fill="#211d25"/>
+<polygon points="24,9 102,9 117,25 117,97 98,116 63,133 28,116 9,97 9,25" fill="url(#shield)"/>
+<g clip-path="url(#inside)"><rect x="-17" y="48" width="160" height="9" fill="#e52c45" transform="rotate(-25 63 72)" opacity=".85"/><rect x="-17" y="87" width="160" height="9" fill="#e52c45" transform="rotate(-25 63 72)" opacity=".85"/><svg x="37" y="18" width="52" height="86" viewBox="354 190 540 890" preserveAspectRatio="xMidYMid meet">
+  
+  
+  <g fill="#df2634">
+    <path fill-rule="evenodd" d="M693 260a66 66 0 1 1-132 0 66 66 0 0 1 132 0ZM653 260a26 26 0 1 0-52 0 26 26 0 0 0 52 0Z"/>
+    <path fill-rule="evenodd" d="M627 302 787 475C826 524 865 574 879 621L447 818 449 797C426 786 405 770 390 749 354 699 357 630 406 566L488 461C536 402 586 350 627 302ZM610 492V555H552V590H610V664H645V590H703V555H645V492Z"/>
+  </g>
+  <path fill="#e7e6e2" fill-rule="evenodd" d="M884 648C884 708 852 754 806 792L824 984H878V1068H376V984H429L442 840ZM684 892a57 57 0 1 1-114 0 57 57 0 0 1 114 0ZM654 892a27 27 0 1 0-54 0 27 27 0 0 0 54 0Z"/>
+</svg><g transform="translate(52.20 112) scale(0.8)" fill="none" stroke="#e7e6e2" stroke-width="2.1" stroke-linecap="square" stroke-linejoin="miter"><path transform="translate(0 0)" d="M3 5L6 2V16M2 16H10"/><path transform="translate(15 0)" d="M2 2H9V16H2Z"/></g></g><rect x="53" y="8" width="20" height="3" fill="#e52c45" />
+</svg>

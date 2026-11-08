@@ -7,6 +7,7 @@ import { calculateRatings } from "../utils/elo.js";
 import User from "../models/user.model.js";
 import { fields, username, password, profileImage, ValidationError, validationResponse } from "../security/validation.js";
 import { uploadProfileImage } from "../utils/uploadProfileImage.js";
+import { recordBadgeResult, achievementState } from "../badges/rules.js";
 
 export const getUserProfile = async (req, res) => {
     try {
@@ -71,7 +72,7 @@ export const finalizeGame = async (req, res) => {
             if (game.status !== "finished" || !["a", "b", "draw"].includes(game.result)) {
                 return { status: 409, body: { error: "The server has not confirmed a finished game." } };
             }
-            const resultBody = () => ({ gameId: String(game._id), result: game.result, ratings: game.ratings });
+            const resultBody = () => ({ gameId: String(game._id), result: game.result, ratings: game.ratings, achievements: game.achievements || null });
             if (game.finalizedAt) return { status: 200, body: resultBody() };
             if (String(game.playerA) === String(game.playerB)) {
                 return { status: 409, body: { error: "Players must be different." } };
@@ -89,11 +90,23 @@ export const finalizeGame = async (req, res) => {
             userB.matches += 1;
             userA.wins += game.result === "a" ? 1 : 0;
             userB.wins += game.result === "b" ? 1 : 0;
+            const completedAt = new Date();
+            userA.statsUpdatedAt = completedAt;
+            userB.statsUpdatedAt = completedAt;
+            const newA = recordBadgeResult(userA, game.result === 'a', game.live?.game?.ruleset, completedAt);
+            const newB = recordBadgeResult(userB, game.result === 'b', game.live?.game?.ruleset, completedAt);
+            // Store only newly earned badges per game, not another copy of the
+            // entire collection. Clients merge these deltas into their profile.
+            const delta = (user, ids) => {
+                const state = achievementState(user);
+                return { ...state, userId: String(user._id), badges: Object.fromEntries(ids.map(id => [id, state.badges[id]])) };
+            };
+            game.achievements = { a: delta(userA, newA), b: delta(userB, newB) };
             game.ratings = {
                 a: { userId: userA._id, before: beforeA, after: after.a, change: after.a - beforeA },
                 b: { userId: userB._id, before: beforeB, after: after.b, change: after.b - beforeB },
             };
-            game.finalizedAt = new Date();
+            game.finalizedAt = completedAt;
             // Concurrent finalizations conflict on these documents and retry the transaction.
             // A retry reads finalizedAt and returns the stored changes without rating twice.
             await userA.save({ session });

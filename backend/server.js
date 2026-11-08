@@ -16,6 +16,7 @@ import connectMongoDB from "./db/connectMongoDB.js";
 import { logger } from "./logging/logger.js";
 import { httpLogger } from "./logging/httpLogger.js";
 import { allowedOrigin } from "./config/cors.js";
+import { createLeaderboardRouter } from "./leaderboard/transport.js";
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME,
@@ -24,11 +25,15 @@ cloudinary.config({
     secure: true,
 });
 
-export function createApp({ connect = connectMongoDB, log = logger, limiterStore } = {}) {
+export function createApp({ connect = connectMongoDB, log = logger, limiterStore, leaderboard } = {}) {
     const app = express();
     app.disable("x-powered-by");
     if (!process.env.VERCEL && process.env.TRUST_PROXY) app.set("trust proxy", process.env.TRUST_PROXY);
     app.use(httpLogger(log));
+
+    // Public and identical for every visitor: CDN hits must not touch auth or
+    // the Mongo-backed per-IP counter. No cookies or reflected CORS headers.
+    app.use("/api/leaderboard", createLeaderboardRouter(leaderboard));
 
     app.use(cors((req, callback) => {
         if (!allowedOrigin(req.headers.origin, req.headers.host)) return callback(new Error("CORS policy violation"));

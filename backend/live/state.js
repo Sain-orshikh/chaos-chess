@@ -99,5 +99,6 @@ export function publicMatch(document, color, now) {
     return { gameId: String(document._id), color, ruleset: s.game.ruleset, revision: s.revision, game: s.game, history: s.history,
         clocks: clockAt(s, now), serverNow: now, incrementMs: s.incrementMs, timeMs: s.timeMs,
         connected: Object.fromEntries(['white', 'black'].map(side => [side, Object.values(s.presence[side]).some(expiry => expiry > now)])),
-        outcome: s.outcome, rematch: s.rematch, nextGameId: s.nextGameReady ? s.nextGameId : null, ratings: document.ratings, rated: document.rated, players: document.players };
+        outcome: s.outcome, rematch: s.rematch, nextGameId: s.nextGameReady ? s.nextGameId : null, ratings: document.ratings, rated: document.rated, players: document.players,
+        achievements: document.achievements?.[color === 'white' ? 'a' : 'b'] || null };
 }

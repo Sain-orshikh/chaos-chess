@@ -9,7 +9,7 @@
     "lint": "eslint",
     "dev:api": "node backend/build-rules.js && node --watch backend/server.js",
     "start:api": "node backend/server.js",
-    "test": "node backend/build-rules.js && node tests/king-safety.test.mjs && node tests/api-security.test.mjs && node tests/serverless.test.mjs && node tests/google-auth.test.mjs && node tests/elo.test.mjs && node tests/live-match.test.mjs && node tests/matchmaking.test.mjs",
+    "test": "node backend/build-rules.js && node tests/king-safety.test.mjs && node tests/api-security.test.mjs && node tests/serverless.test.mjs && node tests/google-auth.test.mjs && node tests/elo.test.mjs && node tests/live-match.test.mjs && node tests/matchmaking.test.mjs && node tests/leaderboard.test.mjs && node tests/badges.test.mjs",
     "build:rules": "node backend/build-rules.js",
     "prebuild": "node backend/build-rules.js"
   },

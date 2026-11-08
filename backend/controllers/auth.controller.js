@@ -4,9 +4,10 @@ import bcrypt from "bcryptjs";
 import { generateTokenAndSetCookie, clearTokenCookie } from "../utils/generateToken.js";
 import { fields, username, password, profileImage, validationResponse } from "../security/validation.js";
 import { uploadProfileImage } from "../utils/uploadProfileImage.js";
+import { achievementState, equippedBadges } from "../badges/rules.js";
 
 export function publicUser(user) {
-    return { _id: user._id, username: user.username, displayName: user.displayName || user.username, hasPassword: !user.googleId, profileImg: user.profileImg, elo: user.elo, matches: user.matches, wins: user.wins };
+    return { _id: user._id, username: user.username, displayName: user.displayName || user.username, hasPassword: !user.googleId, profileImg: user.profileImg, ...achievementState(user), equippedBadges: equippedBadges(user) };
 }
 
 export const signup = async (req, res) => {

@@ -1,12 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { api, ApiError, type User } from "@/lib/api";
 
 type AuthContextValue = {
   user: User | null;
   checking: boolean;
-  setUser: (user: User | null) => void;
+  setUser: Dispatch<SetStateAction<User | null>>;
   signOut: () => Promise<void>;
 };
 const AuthContext = createContext<AuthContextValue | null>(null);

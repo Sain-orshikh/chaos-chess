@@ -38,6 +38,7 @@ test("finalization validates requests and applies both players' updates in one s
     function reset(result = "a") {
         writes = []; transactions = 0;
         game = { _id: gameId, playerA, playerB, rated: true, status: "finished", result, finalizedAt: null,
+            live: { game: { ruleset: 'normal' } },
             async save(options) { assert.equal(options.session, session); writes.push("game"); } };
         users = new Map([playerA, playerB].map(id => [id, { _id: id, elo: 1200, matches: 0, wins: 0,
             async save(options) { assert.equal(options.session, session); writes.push(id); } }]));
@@ -69,12 +70,16 @@ test("finalization validates requests and applies both players' updates in one s
             assert.equal(users.get(playerA).matches, 1);
             assert.equal(users.get(playerB).matches, 1);
             assert.equal(users.get(playerA).wins, 1);
+            assert.equal(users.get(playerA).badgeProgress.classicWins, 1);
+            assert.equal(users.get(playerA).badgeProgress.winStreak, 1);
+            assert.ok(res.body.achievements.a.badges['first-blood']);
             assert.equal(users.get(playerB).wins, 0);
             assert.deepEqual(writes, [playerA, playerB, "game"]);
             const again = response(); await finalizeGame(request({}, playerB), again);
             assert.deepEqual(again.body, res.body);
             assert.equal(writes.length, 3);
             assert.equal(users.get(playerA).matches, 1);
+            assert.equal(users.get(playerA).badgeProgress.classicWins, 1);
         });
         for (const result of ["b", "draw"]) {
             await t.test(`records ${result} correctly`, async () => {

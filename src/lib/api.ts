@@ -1,7 +1,9 @@
-export type User = { _id: string; username: string; displayName?: string; hasPassword?: boolean; profileImg: string; elo: number; matches?: number; wins?: number };
+export type BadgeProgress = { classicWins: number; chaosWins: number; winStreak: number };
+export type AchievementState = { userId: string; elo: number; matches: number; wins: number; statsUpdatedAt: string | null; badges: Record<string, string>; badgeProgress: BadgeProgress };
+export type User = { _id: string; username: string; displayName?: string; hasPassword?: boolean; profileImg: string; elo: number; matches?: number; wins?: number; statsUpdatedAt?: string | null; badges?: Record<string, string>; equippedBadges?: string[]; badgeProgress?: BadgeProgress };
 export type ImageUpload = { name: string; type: string; data: string };
 export type RatingChange = { userId: string; before: number; after: number; change: number };
-export type FinalizedGame = { gameId: string; result: "a" | "b" | "draw"; ratings: { a: RatingChange; b: RatingChange } };
+export type FinalizedGame = { gameId: string; result: "a" | "b" | "draw"; ratings: { a: RatingChange; b: RatingChange }; achievements?: { a: AchievementState; b: AchievementState } | null };
 
 export function finalizeGame(gameId: string): Promise<FinalizedGame> {
   return api<FinalizedGame>(`/games/${encodeURIComponent(gameId)}/finalize`, {});

@@ -30,9 +30,25 @@ const userSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        badges: { type: Map, of: Date, default: () => ({}) },
+        statsUpdatedAt: { type: Date, default: null },
+        equippedBadges: { type: [String], default: [] },
+        badgeProgress: {
+            type: new mongoose.Schema({
+                classicWins: { type: Number, default: 0 },
+                chaosWins: { type: Number, default: 0 },
+                winStreak: { type: Number, default: 0 },
+            }, { _id: false }),
+            default: () => ({}),
+        },
     },
     { timestamps: true }
 );
+
+userSchema.index({ elo: -1, _id: 1 }, {
+    name: "leaderboard_eligible_elo",
+    partialFilterExpression: { matches: { $gte: 5 } },
+});
 
 const User = mongoose.model("User", userSchema);
 

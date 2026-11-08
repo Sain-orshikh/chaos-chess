@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "badges": [
+    {
+      "id": "first-blood",
+      "name": "First Blood",
+      "description": "Win your first multiplayer match.",
+      "category": "Milestones",
+      "secret": false,
+      "artwork": "/badges/first-blood.svg"
+    },
+    {
+      "id": "rooke-awakening",
+      "name": "Rooke Awakening",
+      "description": "Beat Rooke in either mode at default settings.",
+      "category": "Milestones",
+      "secret": false,
+      "artwork": "/badges/rooke-awakening.svg"
+    },
+    {
+      "id": "on-the-rise",
+      "name": "On the Rise",
+      "description": "Reach 600 Elo.",
+      "category": "Milestones",
+      "secret": false,
+      "artwork": "/badges/on-the-rise.svg"
+    },
+    {
+      "id": "four-figures",
+      "name": "Four Figures",
+      "description": "Reach 1,000 Elo.",
+      "category": "Milestones",
+      "secret": false,
+      "artwork": "/badges/four-figures.svg"
+    },
+    {
+      "id": "getting-dangerous",
+      "name": "Getting Dangerous",
+      "description": "Win 10 multiplayer matches.",
+      "category": "Victories",
+      "secret": false,
+      "artwork": "/badges/getting-dangerous.svg"
+    },
+    {
+      "id": "centurion",
+      "name": "Centurion",
+      "description": "Win 100 multiplayer matches.",
+      "category": "Victories",
+      "secret": false,
+      "artwork": "/badges/centurion.svg"
+    },
+    {
+      "id": "by-the-book",
+      "name": "By the Book",
+      "description": "Win 10 Classic multiplayer matches.",
+      "category": "Playstyles",
+      "secret": false,
+      "artwork": "/badges/by-the-book.svg"
+    },
+    {
+      "id": "chaos-theory",
+      "name": "Chaos Theory",
+      "description": "Win 10 Chaos multiplayer matches.",
+      "category": "Playstyles",
+      "secret": false,
+      "artwork": "/badges/chaos-theory.svg"
+    },
+    {
+      "id": "hat-trick",
+      "name": "Hat Trick",
+      "description": "Win three consecutive multiplayer matches.",
+      "category": "Playstyles",
+      "secret": false,
+      "artwork": "/badges/hat-trick.svg"
+    },
+    {
+      "id": "three-musketiers",
+      "name": "Three Musketiers",
+      "description": null,
+      "category": "Secret",
+      "secret": true,
+      "artwork": "/badges/three-musketiers.svg"
+    },
+    {
+      "id": "the-hundred",
+      "name": "The Hundred",
+      "description": "Reach the Top 100 on the leaderboard.",
+      "category": "Leaderboard",
+      "secret": false,
+      "artwork": "/badges/the-hundred.svg"
+    },
+    {
+      "id": "podium",
+      "name": "Podium",
+      "description": "Reach the Top 3 on the leaderboard.",
+      "category": "Leaderboard",
+      "secret": false,
+      "artwork": "/badges/podium.svg"
+    },
+    {
+      "id": "heir-apparent",
+      "name": "Heir Apparent",
+      "description": "Reach the Top 2 on the leaderboard.",
+      "category": "Leaderboard",
+      "secret": false,
+      "artwork": "/badges/heir-apparent.svg"
+    },
+    {
+      "id": "sovereign",
+      "name": "Sovereign",
+      "description": "Reach #1 on the leaderboard.",
+      "category": "Leaderboard",
+      "secret": false,
+      "artwork": "/badges/sovereign.svg"
+    }
+  ]
+}
