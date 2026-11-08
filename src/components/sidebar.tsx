@@ -77,8 +77,8 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <div className="profile-stats"><div><strong>{user?.elo?.toLocaleString() ?? "—"}</strong><span>Elo rating</span></div><div><strong>{user?.matches?.toLocaleString() ?? "—"}</strong><span>Matches</span></div><div><strong>{user?.wins?.toLocaleString() ?? "—"}</strong><span>Wins</span></div></div>
       <p className="nav-label">Play</p>
       <nav className="nav" aria-label="Game modes">
-        <button disabled title="Chaos multiplayer is coming soon"><NavIcon name="chaos" />Chaos<span className="soon">Soon</span></button>
-        <button disabled title="Classic Chess multiplayer is coming soon"><NavIcon name="classic" />Classic Chess<span className="soon">Soon</span></button>
+        <Link href="/chaos/demo" className={pathname.startsWith("/chaos/") ? "active" : ""} onClick={onClose}><NavIcon name="chaos" />Chaos<span className="soon">Preview</span></Link>
+        <Link href="/classic/demo" className={pathname.startsWith("/classic/") ? "active" : ""} onClick={onClose}><NavIcon name="classic" />Classic Chess<span className="soon">Preview</span></Link>
         <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><NavIcon name="bot" />Play bot<span className="available" /></Link>
         <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><NavIcon name="local" />Local 1v1</Link>
       </nav>

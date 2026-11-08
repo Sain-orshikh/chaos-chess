@@ -9,12 +9,13 @@ type Props = {
     drawDisabled: boolean;
     onResign: () => void;
     onOfferDraw?: () => void;
-    onRestart: () => void;
+    onRestart?: () => void;
+    onFlip?: () => void; onCopyLink?: () => void;
     onSetup?: () => void;
     onViewResult?: () => void;
 };
 
-export default function GameActions({ finished, drawDisabled, onResign, onOfferDraw, onRestart, onSetup, onViewResult }: Props) {
+export default function GameActions({ finished, drawDisabled, onResign, onOfferDraw, onRestart, onSetup, onViewResult, onFlip, onCopyLink }: Props) {
     const menu = useRef<HTMLDetailsElement>(null);
     const [confirm, setConfirm] = useState<"resign" | "restart" | "setup" | null>(null);
     useEffect(() => {
@@ -31,11 +32,13 @@ export default function GameActions({ finished, drawDisabled, onResign, onOfferD
         <summary className="quiet-button">Game actions<Icon name="chevron" /></summary>
         <div className="game-actions-menu">
             {confirm ? <div className="game-action-confirm"><p>{confirm === "resign" ? "Resign this game?" : confirm === "setup" ? "Leave this game and return to setup?" : "Restart this game?"}</p>
-                <div><button type="button" onClick={() => act(confirm === "resign" ? onResign : confirm === "setup" ? onSetup! : onRestart)}>{confirm === "resign" ? "Confirm resignation" : confirm === "setup" ? "Leave game" : "Restart game"}</button><button type="button" onClick={() => setConfirm(null)}>Cancel</button></div>
+                <div><button type="button" onClick={() => act(confirm === "resign" ? onResign : confirm === "setup" ? onSetup! : onRestart!)}>{confirm === "resign" ? "Confirm resignation" : confirm === "setup" ? "Leave game" : "Restart game"}</button><button type="button" onClick={() => setConfirm(null)}>Cancel</button></div>
             </div> : <>
                 {!finished && <>{onOfferDraw && <button type="button" disabled={drawDisabled} onClick={() => act(onOfferDraw)}>Offer draw</button>}<button type="button" onClick={() => setConfirm("resign")}>Resign</button></>}
                 {onViewResult && <button type="button" onClick={() => act(onViewResult)}>View result</button>}
-                <button type="button" onClick={() => finished ? act(onRestart) : setConfirm("restart")}>{finished ? "New game" : "Restart"}</button>
+                {onRestart && <button type="button" onClick={() => finished ? act(onRestart) : setConfirm("restart")}>{finished ? "New game" : "Restart"}</button>}
+                {onFlip && <button type="button" onClick={() => act(onFlip)}>Flip board</button>}
+                {onCopyLink && <button type="button" onClick={() => act(onCopyLink)}>Copy game link</button>}
                 {onSetup && <button type="button" onClick={() => finished ? act(onSetup) : setConfirm("setup")}>Match setup</button>}
                 <Link href="/encyclopedia">Piece rules</Link>
             </>}

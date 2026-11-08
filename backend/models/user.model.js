@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema(
         wins: {
             type: Number,
             default: 0,
-        }
+        },
     },
     { timestamps: true }
 );

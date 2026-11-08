@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
@@ -22,5 +23,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable}`}><body><AppShell>{children}</AppShell><Analytics /></body></html>;
+  return <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable}`}><body><Suspense fallback={<main className="page-content"><p role="status">Loading game…</p></main>}><AppShell>{children}</AppShell></Suspense><Analytics /></body></html>;
 }

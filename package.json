@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "dev:api": "node --watch backend/server.js",
+    "dev:api": "node backend/build-rules.js && node --watch backend/server.js",
     "start:api": "node backend/server.js",
-    "test": "node tests/king-safety.test.mjs && node tests/api-security.test.mjs && node tests/serverless.test.mjs && node tests/google-auth.test.mjs && node tests/elo.test.mjs"
+    "test": "node backend/build-rules.js && node tests/king-safety.test.mjs && node tests/api-security.test.mjs && node tests/serverless.test.mjs && node tests/google-auth.test.mjs && node tests/elo.test.mjs && node tests/live-match.test.mjs",
+    "build:rules": "node backend/build-rules.js",
+    "prebuild": "node backend/build-rules.js"
   },
   "type": "module",
   "dependencies": {
@@ -38,6 +40,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "ws": "^8.22.1"
   }
 }

@@ -1,6 +1,8 @@
 import "./config/env.js";
 import { pathToFileURL } from "node:url";
 import express from "express";
+import { createServer } from "node:http";
+import { liveRouter, attachLiveSockets } from "./live/transport.js";
 import { v2 as cloudinary } from "cloudinary";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -40,11 +42,12 @@ export function createApp({ connect = connectMongoDB, log = logger, limiterStore
         }
     });
     app.use("/api", rateLimit({ limit: 120, windowMs: 60_000, namespace: "api", store: limiterStore }));
-    app.use(express.json({ limit: "3mb", strict: true }));
+    app.use(express.json({ limit: "3mb", strict: true, verify(req, _res, buffer) { if (req.path === "/api/live/deadline") req.rawBody = buffer.toString(); } }));
     app.use(cookieParser());
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
     app.use("/api/games", gameRoutes);
+    app.use("/api/live", liveRouter);
     app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
     app.use("/api", (_req, res) => res.status(404).json({ error: "API route not found." }));
 
@@ -61,13 +64,15 @@ export function createApp({ connect = connectMongoDB, log = logger, limiterStore
 }
 
 export const app = createApp();
-export default app;
+export const server = createServer(app);
+attachLiveSockets(server);
+export default server;
 
 // Vercel imports the app; only a directly invoked local server binds a port.
 if (!process.env.VERCEL && process.env.NODE_ENV !== "test" && process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const port = process.env.PORT || 5000;
     connectMongoDB().then(() => {
-        app.listen(port, () => logger.info({ port, event: "server_started" }, "API server started"));
+        server.listen(port, () => logger.info({ port, event: "server_started" }, "API server started"));
     }).catch(error => {
         logger.fatal({ err: error, event: "startup_failed" }, "API startup failed");
         process.exitCode = 1;

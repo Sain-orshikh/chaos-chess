@@ -13,17 +13,18 @@ export type GameStatus =
     | { kind: "playing" | "check" }
     | { kind: "checkmate"; winner: Color }
     | { kind: "resigned"; winner: Color }
-    | { kind: "draw"; reason: "agreement" | AutomaticDrawReason }
+    | { kind: "draw"; reason: "agreement" | "timeout" | "abandoned" | AutomaticDrawReason }
+    | { kind: "timeout" | "disconnect"; winner: Color }
     | { kind: "stalemate" };
 
-export type FinishedStatus = Extract<GameStatus, { kind: "checkmate" | "resigned" | "draw" | "stalemate" }>;
+export type FinishedStatus = Extract<GameStatus, { kind: "checkmate" | "resigned" | "draw" | "stalemate" | "timeout" | "disconnect" }>;
 export function isGameOver(status: GameStatus): status is FinishedStatus {
     return status.kind !== "playing" && status.kind !== "check";
 }
 
 /** Search must use terminal results before material evaluation. Null means play continues. */
 export function gameResultScore(status: GameStatus): number | null {
-    if (status.kind === "checkmate" || status.kind === "resigned") return status.winner === "white" ? MATE_SCORE : -MATE_SCORE;
+    if ("winner" in status) return status.winner === "white" ? MATE_SCORE : -MATE_SCORE;
     if (status.kind === "stalemate" || status.kind === "draw") return 0;
     return null;
 }

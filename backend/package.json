@@ -9,20 +9,25 @@
   },
   "scripts": {
     "dev": "node --watch server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "node build-rules.js"
   },
   "dependencies": {
+    "@upstash/qstash": "^2.12.1",
+    "@upstash/redis": "^1.41.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
+    "esbuild": "^0.28.2",
     "express": "^5.3.0",
     "google-auth-library": "^11.3.3",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.4",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
-    "sharp": "0.35.5"
+    "sharp": "0.35.5",
+    "ws": "^8.22.1"
   }
 }

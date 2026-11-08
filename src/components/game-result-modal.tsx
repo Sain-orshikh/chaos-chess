@@ -15,17 +15,18 @@ type Props = {
     onPlayAgain: () => void;
     onViewBoard: () => void;
     ratingSummary?: ReactNode;
+    playAgainLabel?: string; matchLabel?: string;
 };
 
-export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard, ratingSummary }: Props) {
+export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard, ratingSummary, playAgainLabel = "Play again", matchLabel }: Props) {
     const dialog = useRef<HTMLDialogElement>(null);
     const draw = status.kind === "stalemate" || status.kind === "draw";
     const won = "winner" in status && status.winner === playerColor;
     const title = draw ? "Draw" : won ? "You won" : "You lost";
     const opponentColor = playerColor === "white" ? "black" : "white";
     const winnerColor = "winner" in status ? status.winner : playerColor;
-    const reason = status.kind === "stalemate" ? "Stalemate" : status.kind === "draw" ? status.reason === "agreement" ? "Draw by agreement" : status.reason === "insufficient-material" ? "Insufficient material" : "75 moves by each side without a pawn move or capture"
-        : `${winnerColor === "white" ? "White" : "Black"} wins by ${status.kind === "resigned" ? "resignation" : "checkmate"}`;
+    const reason = status.kind === "stalemate" ? "Stalemate" : status.kind === "draw" ? status.reason === "agreement" ? "Draw by agreement" : status.reason === "abandoned" ? "Match abandoned · No rating change" : status.reason === "timeout" ? "Time expired · Opponent cannot checkmate" : status.reason === "insufficient-material" ? "Insufficient material" : "75 moves by each side without a pawn move or capture"
+        : `${winnerColor === "white" ? "White" : "Black"} wins by ${status.kind === "resigned" ? "resignation" : status.kind === "timeout" ? "timeout" : status.kind === "disconnect" ? "disconnect" : "checkmate"}`;
 
     useEffect(() => {
         const modal = dialog.current;
@@ -37,7 +38,7 @@ export default function GameResultModal({ status, playerColor, playerName, oppon
         aria-labelledby="game-result-title" aria-describedby="game-result-reason"
         onCancel={onViewBoard}
         onClick={event => { if (event.target === event.currentTarget) onViewBoard(); }}>
-        <div className="result-topline"><span>{opponentName === "Rooke" ? "vs Rooke" : "Local 1v1"}</span><button type="button" className="icon-button" aria-label="Close game result" onClick={onViewBoard}><Icon name="close" /></button></div>
+        <div className="result-topline"><span>{matchLabel ?? (opponentName === "Rooke" ? "vs Rooke" : "Local 1v1")}</span><button type="button" className="icon-button" aria-label="Close game result" onClick={onViewBoard}><Icon name="close" /></button></div>
         <div className={`result-emblem${draw ? " paired" : ""}`} aria-hidden="true">
             {Piece("king", winnerColor)}
             {draw && Piece("king", opponentColor)}
@@ -57,7 +58,7 @@ export default function GameResultModal({ status, playerColor, playerName, oppon
             </div>
         </div>
         <div className="result-actions">
-            <button type="button" autoFocus className="result-play-button" onClick={onPlayAgain}><Icon name="replay" />Play again</button>
+            <button type="button" autoFocus className="result-play-button" onClick={onPlayAgain}><Icon name="replay" />{playAgainLabel}</button>
             <button type="button" className="result-board-button" onClick={onViewBoard}>View board</button>
         </div>
         {ratingSummary ?? <p className="result-unrated">Unrated · No Elo or match count changes</p>}

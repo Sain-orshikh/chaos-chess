@@ -49,3 +49,5 @@ next-env.d.ts
 !benchmarks/rooke-match-worker.mjs
 
 /design
+
+!tests/fixtures/live-*.mjs

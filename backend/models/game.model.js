@@ -12,6 +12,8 @@ const ratingChangeSchema = new mongoose.Schema({
 const gameSchema = new mongoose.Schema({
     playerA: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     playerB: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    live: { type: mongoose.Schema.Types.Mixed, default: null },
+    players: { type: mongoose.Schema.Types.Mixed, default: null },
     rated: { type: Boolean, default: false },
     status: { type: String, enum: ["playing", "finished"], default: "playing" },
     result: { type: String, enum: ["a", "b", "draw"], default: null },
