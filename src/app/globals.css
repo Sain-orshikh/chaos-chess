@@ -41,9 +41,18 @@
 
 /* Badge collection: static SVGs, no per-badge image transformations. */
 .badge-strip { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.badge-strip img { display: block; width: 34px; height: 39px; object-fit: contain; }
-.profile-badges { display: block; width: 100%; margin-top: 12px; padding: 0; background: none; border: 0; text-align: left; }
-.profile-badges > span:not(.badge-strip) { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; padding: 7px 0; }
+.badge-strip .badge-preview-trigger img { display: block; width: 34px; height: 39px; object-fit: contain; }
+.profile-badges { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; margin-top: 12px; }
+.profile-badges > button { font-size: 12px; }
+.badge-preview { display: inline-flex; }
+.badge-preview-trigger { display: inline-flex; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: zoom-in; }
+.badge-preview-panel { position: fixed; inset: auto; width: min(264px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; margin: 0; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--foreground); box-shadow: 0 12px 36px #0008; text-align: center; }
+.badge-preview-panel:popover-open { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.badge-preview .badge-preview-panel img { display: block; width: 208px; max-width: 100%; height: 240px; object-fit: contain; filter: none; opacity: 1; }
+.badge-preview-panel > strong { font-size: 16px; color: var(--text-strong); }
+.badge-preview-panel > span { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.badge-preview-close { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; border: 0; border-radius: 4px; background: transparent; font-size: 24px; }
+.badge-preview-close:hover { background: var(--surface-hover); }
 .badge-dialog { width: min(900px, calc(100% - 32px)); max-height: 88dvh; padding: 25px; background: var(--panel); color: var(--foreground); border: 1px solid var(--border); border-radius: 6px; overflow-y: auto; }
 .badge-dialog::backdrop { background: #000b; }
 .badge-eyebrow { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
@@ -66,9 +75,9 @@
 .badge-unlocks > div > span { display: flex; align-items: center; gap: 7px; font-size: 13px; }
 .badge-unlocks img { width: 34px; height: 39px; object-fit: contain; }
 .board-player .badge-strip { gap: 4px; }
-.board-player .badge-strip img { width: 27px; height: 31px; }
+.board-player .badge-strip .badge-preview-trigger img { width: 27px; height: 31px; }
 @media (max-width: 700px) { .badge-collection { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } }
-@media (max-width: 520px) { .badge-dialog { width: calc(100% - 20px); padding: 18px 12px; } .badge-collection { grid-template-columns: repeat(2, minmax(0, 1fr)); } .badge-card { padding: 14px 8px 10px; } .board-player .badge-strip { gap: 2px; } .board-player .badge-strip img { width: 20px; height: 23px; } }
+@media (max-width: 520px) { .badge-dialog { width: calc(100% - 20px); padding: 18px 12px; } .badge-collection { grid-template-columns: repeat(2, minmax(0, 1fr)); } .badge-card { padding: 14px 8px 10px; } .board-player .badge-strip { gap: 2px; } .board-player .badge-strip .badge-preview-trigger img { width: 20px; height: 23px; } }
 @media (pointer: coarse) { .badge-equip { min-height: 44px; } }
 * {
   box-sizing: border-box;
@@ -1731,8 +1740,9 @@ h1, h2, h3 {
 .online-moves li { display: grid; grid-template-columns: 25px 1fr 1fr; gap: 8px; padding: 10px 8px; }
 .online-moves li:nth-child(odd) { background: var(--surface-hover); border-radius: 3px; }
 .online-moves li > span:first-child { color: var(--muted); }
-.online-offer { border: 1px solid var(--border); border-radius: 5px; padding: 13px; margin: 17px 0; font-size: 12px; }
-.online-offer p { color: var(--muted); line-height: 1.7; }
+.online-offer { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; border: 1px solid var(--border); border-radius: 5px; padding: 13px; margin: 17px 0; font-size: 12px; line-height: 1.5; }
+.online-offer > strong, .online-offer > p, .online-offer > div { flex-basis: 100%; }
+.online-offer p { margin: 0; color: var(--muted); line-height: 1.7; }
 .online-offer > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .online-notice { min-height: 18px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .online-home-link { display: block; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 16px; color: var(--muted); font-size: 12px; }
@@ -1784,8 +1794,8 @@ h1, h2, h3 {
 .leaderboard-avatar { display: inline-grid; place-items: center; flex-shrink: 0; width: 37px; height: 37px; background: var(--avatar); border: 1px solid var(--border-strong); clip-path: polygon(0 0,85% 0,100% 15%,100% 100%,15% 100%,0 85%); font-weight: 600; }
 .leaderboard-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .leaderboard-name > .badge-strip, .leaderboard-contender-name > .badge-strip { display: flex; flex-wrap: wrap; margin-top: 7px; gap: 4px; }
-.leaderboard-name > .badge-strip img { width: 24px; height: 28px; }
-.leaderboard-contender-name > .badge-strip img { width: 30px; height: 34px; }
+.leaderboard-name > .badge-strip .badge-preview-trigger img { width: 24px; height: 28px; }
+.leaderboard-contender-name > .badge-strip .badge-preview-trigger img { width: 30px; height: 34px; }
 .leaderboard-contender > .leaderboard-avatar { margin-bottom: 12px; }
 .leaderboard-contender-name { min-width: 0; overflow-wrap: anywhere; }
 .leaderboard-contender-name strong { font-weight: 600; }
@@ -1847,7 +1857,7 @@ h1, h2, h3 {
   .leaderboard-contender-rank svg { display: none; }
   .leaderboard-contender > .leaderboard-avatar { width: 30px; height: 30px; margin: 0; }
   .leaderboard-contender-name { flex: 1; font-size: 13px; }
-  .leaderboard-contender-name > .badge-strip img { width: 23px; height: 26px; }
+  .leaderboard-contender-name > .badge-strip .badge-preview-trigger img { width: 23px; height: 26px; }
   .leaderboard-contender-elo { margin: 0; font-size: 26px; }
   .leaderboard-contender p { display: none; }
   .leaderboard-contender-elo span { font-size: 10px; margin-left: 4px; }

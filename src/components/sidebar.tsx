@@ -78,7 +78,7 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
           {error && <p className="form-error" role="alert">{error}</p>}
         </div>}
       </div>
-      {user && <button type="button" className="profile-badges" onClick={() => setBadgesOpen(true)} aria-label="Choose profile badges">{user.equippedBadges?.length ? <BadgeStrip ids={user.equippedBadges} /> : <span>Choose your badges <span aria-hidden="true">＋</span></span>}</button>}
+      {user && <div className="profile-badges">{!!user.equippedBadges?.length && <BadgeStrip ids={user.equippedBadges} />}<button type="button" className="text-button" onClick={() => setBadgesOpen(true)}>{user.equippedBadges?.length ? 'Manage badges' : 'Choose your badges'} <span aria-hidden="true">＋</span></button></div>}
       <div className="profile-stats"><div><strong>{user?.elo?.toLocaleString() ?? "—"}</strong><span>Elo rating</span></div><div><strong>{user?.matches?.toLocaleString() ?? "—"}</strong><span>Matches</span></div><div><strong>{user?.wins?.toLocaleString() ?? "—"}</strong><span>Wins</span></div></div>
       <p className="nav-label">Play</p>
       <nav className="nav" aria-label="Game modes">

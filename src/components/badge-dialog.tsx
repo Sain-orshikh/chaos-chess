@@ -1,11 +1,11 @@
 "use client";
 
-import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { api, type User } from '@/lib/api';
 import { badges, badgeProgressLabel } from '@/lib/badges';
 import { useAuth } from './auth-provider';
 import BadgeStrip from './badge-strip';
+import BadgePreview from './badge-preview';
 import Icon from './icon';
 
 export default function BadgeDialog({ onClose }: { onClose: () => void }) {
@@ -48,7 +48,7 @@ export default function BadgeDialog({ onClose }: { onClose: () => void }) {
       const date = user.badges?.[badge.id]; const owned = !!date; const equipped = selected.includes(badge.id);
       const progress = owned ? null : badgeProgressLabel(badge.id, user);
       return <article className={`badge-card${owned ? ' earned' : ' locked'}`} key={badge.id}>
-        <Image className="badge-art" src={badge.artwork} alt="" width={108} height={124} />
+        <BadgePreview id={badge.id} collection />
         <h3>{badge.name}</h3><p>{badge.secret ? 'Description hidden' : badge.description}</p>
         <small>{owned ? `Earned ${new Date(date).toLocaleDateString()}` : progress || (badge.category === 'Leaderboard' && (user.matches || 0) < 5 ? `${user.matches || 0} / 5 rated matches to qualify` : 'Locked')}</small>
         <button type="button" className={`badge-equip${equipped ? ' equipped' : ''}`} aria-pressed={equipped} aria-label={`${equipped ? 'Unequip' : 'Equip'} ${badge.name}`} disabled={!owned || loading || saving || (!equipped && selected.length >= 3)} onClick={() => setSelected(current => current.includes(badge.id) ? current.filter(id => id !== badge.id) : [...current, badge.id])}>{equipped ? '✓ Equipped' : owned ? '+ Equip' : 'Locked'}</button>
