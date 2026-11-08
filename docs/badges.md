@@ -20,11 +20,17 @@ result stats, rather than copying the whole badge collection on every game.
 
 The existing five-minute, demand-refreshed leaderboard query qualifies accounts
 with **five completed rated matches**. It also projects the four leaderboard
-badge dates for those same 100 players. New awards are batched into at most one
+badge dates for those same 100 players, along with their equipped IDs and profile
+image URLs. New awards are batched into at most one
 update per newly qualifying player, in a transaction with snapshot publication.
 A stale lease cannot award badges, and a failed award prevents publication of
 that snapshot. Refreshes with no new awards retain the original single snapshot
-write. Public standings contain no badge inventory or private profile fields.
+write. Public standings contain only the three equipped badge IDs, with ownership
+checked before publication; the full inventory and private fields stay out of
+the response. Avatar URLs are bounded to 512 characters and the entire snapshot
+to 128 KB. Both table rows and top-three cards use these shared display fields;
+no extra profile query runs for each row. Avatars load lazily without image
+transformations and fall back to initials when missing or broken.
 
 Rank badges use the published snapshot's competition ranks and 100-row cutoff,
 including its existing tie policy. Ranking first awards all four tiers. Awards

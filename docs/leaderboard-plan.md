@@ -1,5 +1,12 @@
 # Leaderboard architecture
 
+Implementation update: the leaderboard now shows saved profile images and up to
+three equipped badges in both its leading-player cards and table. Those fields
+share the existing top-100 query and cached snapshot; images load lazily with
+initials as fallback. The current payload cap is 128 KB. The initial-avatar-only
+delivery and 25 KB payload assumptions below describe the earlier proposal,
+not the current image bandwidth or payload budget.
+
 Status: implemented locally with the approved Contenders layout. Deployed CDN/cache and provider usage verification remain rollout checks.
 Reviewed: 8 November 2026. Provider allowances below are public free-tier limits,
 not verified balances in this project's accounts.

@@ -101,7 +101,7 @@ matches; equal Elo shares rank. One MongoDB
 snapshot refreshes on demand after five minutes, coordinated across API instances
 by an expiring lease. Vercel caches the public response for one minute. Pagination
 and the personal Elo gap use the downloaded list without more ranking queries.
-No Redis commands, QStash jobs or avatar delivery are added for the leaderboard.
-The page footer explains the 6–7 minute delay and that standings are not live.
+Leaderboard snapshots include profile-image URLs and up to three equipped badge IDs using the existing top-100 query. Images load lazily from their saved URLs with initials as fallback; badge artwork is static. No per-player profile requests, Redis commands or QStash jobs are added. The snapshot payload is capped at 128 KB.
+The page footer notes that changes may take 6–7 minutes to appear.
 See [the architecture and free-tier budget](docs/leaderboard-plan.md) for rollout
 checks, index requirements, failure behavior, and usage estimates.

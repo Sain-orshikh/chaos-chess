@@ -9,6 +9,8 @@ const entries = Array.from({ length: 100 }, (_, index) => ({
     userId: String(index + 1).padStart(24, "0"), username: names[index] || `player_${index + 1}`,
     name: names[index] || `Player ${index + 1}`, rank: index + 1,
     elo: 1842 - index * 7, matches: 186 + index * 7, wins: 120 + index * 3,
+    profileImg: index % 4 === 3 ? '' : index % 2 ? '/avatar-preview-black.svg' : '/avatar-preview-white.svg',
+    equippedBadges: index === 0 ? ['sovereign', 'centurion', 'three-musketiers'] : ['first-blood', 'on-the-rise', 'rooke-awakening'],
 }));
 let state = "ranked";
 const generatedAt = Date.now() - 120_000;

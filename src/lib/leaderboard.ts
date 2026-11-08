@@ -1,4 +1,4 @@
-export type LeaderboardEntry = { userId: string; username: string; name: string; elo: number; matches: number; wins: number; rank: number };
+export type LeaderboardEntry = { userId: string; username: string; name: string; elo: number; matches: number; wins: number; rank: number; profileImg?: string; equippedBadges?: string[] };
 export type LeaderboardSnapshot = { generatedAt: number; entries: LeaderboardEntry[] };
 
 let saved: { value: LeaderboardSnapshot; freshUntil: number } | undefined;
@@ -23,7 +23,9 @@ export function readLeaderboard(): Promise<LeaderboardSnapshot> {
             const value: LeaderboardSnapshot = await response.json();
             if (!Number.isFinite(value.generatedAt) || !Array.isArray(value.entries) || value.entries.length > 100 ||
                 value.entries.some(entry => typeof entry.userId !== "string" || typeof entry.name !== "string" ||
-                    typeof entry.username !== "string" || ![entry.elo, entry.matches, entry.wins, entry.rank].every(Number.isSafeInteger))) {
+                    typeof entry.username !== "string" || ![entry.elo, entry.matches, entry.wins, entry.rank].every(Number.isSafeInteger) ||
+                    (entry.profileImg !== undefined && (typeof entry.profileImg !== 'string' || entry.profileImg.length > 512)) ||
+                    (entry.equippedBadges !== undefined && (!Array.isArray(entry.equippedBadges) || entry.equippedBadges.length > 3 || entry.equippedBadges.some(id => typeof id !== 'string'))))) {
                 throw new Error("Could not read the standings. Please try again shortly.");
             }
             // A nearly expired server snapshot must not gain five more minutes

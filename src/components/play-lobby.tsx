@@ -10,6 +10,7 @@ import type { SavedMatch } from "./common/saved_match";
 import { parseFen } from "./utils/fen_parcer";
 import Board from "./board";
 import Icon from "./icon";
+import NavIcon from "./nav-icon";
 import { useAuth } from "./auth-provider";
 import type { Color, Ruleset } from "./utils/types";
 
@@ -68,7 +69,7 @@ export default function PlayLobby({ local = false }: { local?: boolean }) {
   return <section>
     <div className="page-heading"><h1>{local ? "Local 1v1" : "Play Rooke"}</h1><div className="page-actions">{!match && <Link className="quiet-button" href="/encyclopedia"><Icon name="book" />Piece rules</Link>}</div></div>
     {match ? <div className={`match-screen${local ? "" : " bot-match-screen"}`}><Board ruleset={match.game.ruleset} game={match.game} onAction={onAction} evaluationSeed={match.evaluationSeed} orientation={match.orientation} playerName={user?.displayName || user?.username || "Anonymous"} playerImage={user?.profileImg} bot={!local} onSetup={setup} /><p className="match-note">{match.game.ruleset === "chaos" ? "Chaos Chess" : "Classic Chess"} · Unrated · No Elo or match count changes</p></div> : <div className="match-setup">
-      <div className="match-opponent">{local ? <Icon name="person" /> : <Image src="/brand-rooke.svg" width={44} height={60} alt="" className="rooke-logo" />}<div><h2>{local ? "Two players, one board" : <>Rooke <span className="bot-rating" title="Provisional Classic chess rating">(1650)</span></>}</h2><p>{local ? "Take turns on this device." : "Play against our current engine."}</p></div></div>
+      <div className="match-opponent">{local ? <NavIcon name="local" /> : <Image src="/brand-rooke.svg" width={44} height={60} alt="" className="rooke-logo" />}<div><h2>{local ? "Two players, one board" : <>Rooke <span className="bot-rating" title="Provisional Classic chess rating">(1650)</span></>}</h2><p>{local ? "Take turns on this device." : "Play against our current engine."}</p></div></div>
       {saved && <div className="resume-match"><div><strong>Continue your {local ? "local" : "bot"} match</strong><p>{saved.game.ruleset === "chaos" ? "Chaos Chess" : "Classic Chess"} · Saved for 3 hours after your last move</p></div><button className="quiet-button" onClick={resumeMatch}>Resume match<Icon name="play" /></button></div>}
       <h2>Choose your rules</h2>
       <div className="color-options">{(["chaos", "normal"] as const).map(value => <button key={value} className={ruleset === value ? "selected" : ""} aria-pressed={ruleset === value} onClick={() => setRuleset(value)}>{value === "chaos" ? "Chaos Chess" : "Classic Chess"}</button>)}</div>

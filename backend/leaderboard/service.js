@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import Snapshot from "../models/leaderboardSnapshot.model.js";
 import User from "../models/user.model.js";
 import connectMongoDB from "../db/connectMongoDB.js";
-import { leaderboardAwards } from '../badges/rules.js';
+import { leaderboardAwards, equippedBadges } from '../badges/rules.js';
 
 export const REFRESH_MS = 300_000;
 export const MAX_AGE_MS = 86_400_000;
@@ -52,7 +52,7 @@ export async function topUsers(model = User) {
     // Mongoose reuses the model's initialization promise. Do not sort before its
     // index is ready; a missing index must fail rather than scan all accounts.
     await model.init();
-    return model.find({ matches: { $gte: MIN_MATCHES } }).select("_id username displayName elo matches wins badges.the-hundred badges.podium badges.heir-apparent badges.sovereign")
+    return model.find({ matches: { $gte: MIN_MATCHES } }).select("_id username displayName elo matches wins profileImg equippedBadges badges")
         .sort({ elo: -1, _id: 1 }).hint("leaderboard_eligible_elo").limit(100).maxTimeMS(2000).lean();
 }
 
@@ -67,9 +67,13 @@ export function publicEntries(users) {
             userId: String(user._id), username: String(user.username).slice(0, 100),
             name: String(user.displayName || user.username).slice(0, 100),
             elo: user.elo, matches: user.matches, wins: user.wins, rank,
+            profileImg: typeof user.profileImg === 'string' && user.profileImg.length <= 512 ? user.profileImg : '',
+            equippedBadges: equippedBadges(user),
         };
     });
-    if (Buffer.byteLength(JSON.stringify(entries)) > 64_000) throw new Error("Leaderboard exceeds payload budget");
+    // Bound image URLs and badge IDs above; include room for the new public
+    // display fields without any additional per-player database requests.
+    if (Buffer.byteLength(JSON.stringify(entries)) > 128_000) throw new Error("Leaderboard exceeds payload budget");
     return entries;
 }
 

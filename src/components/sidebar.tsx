@@ -84,7 +84,7 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <nav className="nav" aria-label="Game modes">
         <Link href="/chaos" className={(pathname === "/chaos" || pathname.startsWith("/chaos/")) ? "active" : ""} onClick={onClose}><NavIcon name="chaos" />Chaos</Link>
         <Link href="/classic" className={(pathname === "/classic" || pathname.startsWith("/classic/")) ? "active" : ""} onClick={onClose}><NavIcon name="classic" />Classic Chess</Link>
-        <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><NavIcon name="bot" />Play bot<span className="available" /></Link>
+        <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><NavIcon name="bot" />Play bot</Link>
         <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><NavIcon name="local" />Local 1v1</Link>
       </nav>
       <p className="nav-label section-gap">Explore</p>

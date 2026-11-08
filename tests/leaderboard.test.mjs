@@ -35,9 +35,25 @@ test("five completed matches qualify; lower counts are excluded without rank gap
     assert.deepEqual(entries.map(entry => entry.rank), [1, 1, 3]);
     assert.equal(entries[2].matches, 5);
     assert.deepEqual(entries.map(entry => entry.userId), ["a", "b", "c"]);
-    assert.deepEqual(Object.keys(entries[0]).sort(), ["elo", "matches", "name", "rank", "userId", "username", "wins"]);
+    assert.deepEqual(Object.keys(entries[0]).sort(), ["elo", "equippedBadges", "matches", "name", "profileImg", "rank", "userId", "username", "wins"]);
     assert.throws(() => publicEntries(Array.from({ length: 101 }, () => user("a"))), /entry limit/);
     assert.throws(() => publicEntries([{ ...user("a"), wins: 6 }]), /statistics/);
+});
+
+test('standings include bounded avatars and only equipped, owned badges without exposing the inventory', () => {
+    const source = { ...user('a', 900), profileImg: '/avatar-preview-white.svg',
+        equippedBadges: ['on-the-rise', 'sovereign', 'on-the-rise', 'first-blood', 'centurion'],
+        badges: { 'on-the-rise': new Date(), 'first-blood': new Date(), centurion: new Date() } };
+    const [entry] = publicEntries([source]);
+    assert.equal(entry.profileImg, source.profileImg);
+    assert.deepEqual(entry.equippedBadges, ['on-the-rise', 'first-blood', 'centurion']);
+    assert.equal(entry.badges, undefined);
+    assert.equal(entry.password, undefined);
+    assert.equal(entry.googleId, undefined);
+    const [legacy] = publicEntries([user('b')]);
+    assert.equal(legacy.profileImg, ''); assert.deepEqual(legacy.equippedBadges, []);
+    const [oversize] = publicEntries([{ ...source, profileImg: 'https://example.com/' + 'a'.repeat(513) }]);
+    assert.equal(oversize.profileImg, '');
 });
 
 test("Mongo filters eligibility before the top-100 limit and uses the eligible rating index", async () => {
