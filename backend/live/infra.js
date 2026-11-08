@@ -21,7 +21,7 @@ export function createLiveInfra() {
         },
         async schedule(id, time) {
             await qstash.publishJSON({ url: endpoint, body: { gameId: id }, notBefore: Math.ceil(time / 1000), retries: 5,
-                deduplicationId: `${id}:${Math.ceil(time / 1000)}` });
+                deduplicationId: `${id}-${Math.ceil(time / 1000)}` });
         },
         async publish(id) { await redis.publish(`match:${id}`, { changed: true }); },
         subscribe(id, changed, failed) {
