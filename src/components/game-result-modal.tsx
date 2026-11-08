@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import Icon from "./icon";
 import Piece from "./piece";
 import type { Color } from "./utils/types";
@@ -13,9 +14,10 @@ type Props = {
     opponentName?: string;
     onPlayAgain: () => void;
     onViewBoard: () => void;
+    ratingSummary?: ReactNode;
 };
 
-export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard }: Props) {
+export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard, ratingSummary }: Props) {
     const dialog = useRef<HTMLDialogElement>(null);
     const draw = status.kind === "stalemate" || status.kind === "draw";
     const won = "winner" in status && status.winner === playerColor;
@@ -58,6 +60,6 @@ export default function GameResultModal({ status, playerColor, playerName, oppon
             <button type="button" autoFocus className="result-play-button" onClick={onPlayAgain}><Icon name="replay" />Play again</button>
             <button type="button" className="result-board-button" onClick={onViewBoard}>View board</button>
         </div>
-        <p className="result-unrated">Unrated · No Elo or match count changes</p>
+        {ratingSummary ?? <p className="result-unrated">Unrated · No Elo or match count changes</p>}
     </dialog>;
 }

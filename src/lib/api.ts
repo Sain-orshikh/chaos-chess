@@ -1,5 +1,11 @@
 export type User = { _id: string; username: string; displayName?: string; hasPassword?: boolean; profileImg: string; elo: number; matches?: number; wins?: number };
 export type ImageUpload = { name: string; type: string; data: string };
+export type RatingChange = { userId: string; before: number; after: number; change: number };
+export type FinalizedGame = { gameId: string; result: "a" | "b" | "draw"; ratings: { a: RatingChange; b: RatingChange } };
+
+export function finalizeGame(gameId: string): Promise<FinalizedGame> {
+  return api<FinalizedGame>(`/games/${encodeURIComponent(gameId)}/finalize`, {});
+}
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }

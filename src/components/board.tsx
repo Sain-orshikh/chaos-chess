@@ -6,6 +6,7 @@ import type { Dispatch } from "react";
 import Piece, { BoardPiece } from "./piece";
 import { pieceColor, pieceDefinition, pieceDefinitions } from "./utils/pieces";
 import GameResultModal from "./game-result-modal";
+import OnlineGameFinalization from "./online-game-finalization";
 import GameActions from "./game-actions";
 import type { BasicMove, Board as BoardState, Color, Ruleset } from "./utils/types";
 import BotPanel from "./bot-panel";
@@ -21,9 +22,10 @@ type Props = {
     orientation?: Color; playerName?: string; bot?: boolean; ruleset?: Ruleset;
     game?: GameState; onAction?: Dispatch<GameAction>; locked?: boolean; analysis?: boolean;
     highlightedMove?: BasicMove | null; onSetup?: () => void; evaluationSeed?: number;
+    onlineGameId?: string;
 };
 
-export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset: initialRuleset = "chaos", game: controlledGame, onAction, locked = false, analysis = false, highlightedMove, onSetup, evaluationSeed }: Props) {
+export default function Board({ orientation = "white", playerName = "Anonymous", bot = false, ruleset: initialRuleset = "chaos", game: controlledGame, onAction, locked = false, analysis = false, highlightedMove, onSetup, evaluationSeed, onlineGameId }: Props) {
     const [localGame, localDispatch] = useReducer(gameReducer, STARTING_FEN, (fen) => createGame(parseFen(fen), "white", undefined, initialRuleset));
     const game = controlledGame ?? localGame;
     const dispatch = onAction ?? localDispatch;
@@ -141,6 +143,7 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
             status={status} playerColor={orientation} playerName={playerName} opponentName={bot ? "Rooke" : analysis ? topColor === "white" ? "White" : "Black" : "Player 2"}
             onPlayAgain={restart}
             onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
+            ratingSummary={onlineGameId && !bot ? <OnlineGameFinalization key={onlineGameId} gameId={onlineGameId} /> : undefined}
         />}
         {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
     </div>{bot && <BotPanel key={gameNumber} evaluationSeed={evaluationSeed} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;

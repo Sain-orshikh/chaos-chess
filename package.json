@@ -9,7 +9,7 @@
     "lint": "eslint",
     "dev:api": "node --watch backend/server.js",
     "start:api": "node backend/server.js",
-    "test": "node tests/king-safety.test.mjs && node tests/api-security.test.mjs && node tests/serverless.test.mjs && node tests/google-auth.test.mjs"
+    "test": "node tests/king-safety.test.mjs && node tests/api-security.test.mjs && node tests/serverless.test.mjs && node tests/google-auth.test.mjs && node tests/elo.test.mjs"
   },
   "type": "module",
   "dependencies": {

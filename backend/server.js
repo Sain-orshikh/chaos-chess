@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
+import gameRoutes from "./routes/game.route.js";
 import { rateLimit } from "./security/rateLimit.js";
 import connectMongoDB from "./db/connectMongoDB.js";
 import { logger } from "./logging/logger.js";
@@ -43,6 +44,7 @@ export function createApp({ connect = connectMongoDB, log = logger, limiterStore
     app.use(cookieParser());
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
+    app.use("/api/games", gameRoutes);
     app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
     app.use("/api", (_req, res) => res.status(404).json({ error: "API route not found." }));
 

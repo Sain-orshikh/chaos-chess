@@ -1,0 +1,25 @@
+import mongoose from "mongoose";
+
+const ratingChangeSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    before: { type: Number, required: true },
+    after: { type: Number, required: true },
+    change: { type: Number, required: true },
+}, { _id: false });
+
+// Only trusted online-game code may create games or set their result.
+// There is deliberately no client-facing endpoint for writing these fields.
+const gameSchema = new mongoose.Schema({
+    playerA: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    playerB: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    rated: { type: Boolean, default: false },
+    status: { type: String, enum: ["playing", "finished"], default: "playing" },
+    result: { type: String, enum: ["a", "b", "draw"], default: null },
+    finalizedAt: { type: Date, default: null },
+    ratings: {
+        type: new mongoose.Schema({ a: ratingChangeSchema, b: ratingChangeSchema }, { _id: false }),
+        default: null,
+    },
+}, { timestamps: true });
+
+export default mongoose.model("Game", gameSchema);
