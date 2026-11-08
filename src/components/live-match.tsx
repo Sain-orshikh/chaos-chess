@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Board from './board';
+import Piece from './piece';
 import GameActions from './game-actions';
 import { gameReducer, isGameOver, type GameAction, type GameState } from './common/game_state';
 import type { BasicMove, Color, Ruleset } from './utils/types';
@@ -21,7 +22,7 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
     const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
     const [game, setGame] = useState<GameState | null>(null);
     const [connected, setConnected] = useState(false), [waiting, setWaiting] = useState(false);
-    const [notice, setNotice] = useState('Connecting to your match…'), [flipped, setFlipped] = useState(false);
+    const [notice, setNotice] = useState('Connecting to your opponent…'), [flipped, setFlipped] = useState(false);
     const [elapsed, setElapsed] = useState(0);
     const current = useRef<Snapshot | null>(null), preview = useRef<GameState | null>(null);
     const socket = useRef<WebSocket | null>(null), pending = useRef<object | null>(null), receivedAt = useRef(0);
@@ -69,13 +70,21 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
         if (after.turn !== before.turn && after.lastMove) { command('move', { move: after.lastMove }); return; }
         preview.current = after; setGame(after);
     }, [command]);
-    if (!snapshot || !game) return <section className="match-unavailable"><h1>Your match</h1><p role="status">{notice}</p><Link href="/login">Sign in</Link> · <Link href="/">Back to play</Link></section>;
+    if (!snapshot || !game) return <section className="match-connecting" aria-labelledby="match-connecting-title">
+        <div className="match-standoff" aria-hidden="true">
+            <span className="match-standoff-white">{Piece('knight', 'white')}</span>
+            <span>{Piece('knight', 'black')}</span>
+        </div>
+        <h1 id="match-connecting-title">Taking your seat</h1>
+        <p className="match-connecting-status" role="status">{notice}</p>
+        <div className="match-loading-squares" aria-hidden="true"><span /><span /><span /></div>
+    </section>;
     const color = snapshot.color, finished = isGameOver(game.status), orientation = flipped ? opposite(color) : color;
     const clocks = { ...snapshot.clocks };
     if (!snapshot.outcome) clocks[snapshot.game.turn] = Math.max(0, clocks[snapshot.game.turn] - elapsed);
     const rating = snapshot.ratings?.[color === 'white' ? 'a' : 'b'];
     const ratingSummary = <p className="result-unrated">{snapshot.outcome?.reason === 'abandoned' ? 'Abandoned · No rating change' : !snapshot.rated ? 'Unrated match' : rating ? `Rating ${rating.before} → ${rating.after} (${rating.change >= 0 ? '+' : ''}${rating.change})` : 'Rating update pending'}</p>;
-    return <section className="online-match-page"><div className="page-heading"><div><p className="online-eyebrow">MULTIPLAYER</p><h1>{ruleset === 'normal' ? 'Classic Chess' : 'Chaos Chess'}</h1></div><span className="preview-tag">{connected ? 'Connected' : 'Reconnecting'}</span></div>
+    return <section className="online-match-page">
         <div className="online-match-layout"><Board game={game} onAction={onAction} ruleset={ruleset} orientation={orientation} locked={!connected || waiting || game.turn !== color}
             online={{ players: snapshot.players, color, live: true, clocks: { white: timeLabel(clocks.white), black: timeLabel(clocks.black) }, ratingSummary,
                 controls: <GameActions finished={finished} drawDisabled={!connected || waiting || !!game.drawOffer || !!game.pendingPromotion}
@@ -83,12 +92,12 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
                     onCopyLink={async () => { try { await navigator.clipboard.writeText(window.location.href); setNotice('Game link copied.'); } catch { setNotice('Copy the link from your address bar.'); } }} />,
                 onRematch: () => { if (!snapshot.rematch) command('rematch'); else if (snapshot.rematch !== color) command('accept-rematch'); },
                 rematchLabel: snapshot.rematch === color ? 'Rematch requested' : snapshot.rematch ? 'Accept rematch' : 'Request rematch' }} />
-            <aside className="online-match-panel" aria-label="Match information"><div className="match-info-heading"><strong>{finished ? 'Match finished' : waiting ? 'Sending…' : game.turn === color ? 'Your turn' : 'Waiting for opponent'}</strong></div>
-                <p>Playing as {color === 'white' ? 'White' : 'Black'}</p><p>{Math.round(snapshot.timeMs / 60_000)} min + {snapshot.incrementMs / 1000} sec</p>
+            <aside className="online-match-panel" aria-label="Match information"><div className={`match-info-heading${!finished && game.turn === color ? ' is-your-turn' : ''}`}><span className={`player-color ${game.turn}`} aria-hidden="true" /><strong>{finished ? 'Match finished' : waiting ? 'Sending…' : game.turn === color ? 'Your turn' : 'Waiting for opponent'}</strong></div>
+                <div className="match-session-meta"><span>{ruleset === 'normal' ? 'Classic' : 'Chaos'} · {Math.round(snapshot.timeMs / 60_000)} + {snapshot.incrementMs / 1000}</span><span className={connected ? 'match-connected' : 'match-reconnecting'}>{connected ? 'Connected' : 'Reconnecting'}</span></div><p className="online-playing-as">Playing as <strong>{color === 'white' ? 'White' : 'Black'}</strong></p>
                 {!snapshot.connected[opposite(color)] && !finished && <p role="status">Opponent disconnected. They have 60 seconds to return; their chess clock continues.</p>}
                 {game.drawOffer && <div className="online-offer"><strong>{game.drawOffer === color ? 'Draw offer sent' : 'Your opponent offers a draw'}</strong>{game.drawOffer !== color && <div><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('respond-draw', { accept: true })}>Accept draw</button><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('respond-draw', { accept: false })}>Decline</button></div>}</div>}
                 {finished && <div className="online-offer">{snapshot.rematch && snapshot.rematch !== color ? <><p>Your opponent requested a rematch.</p><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('accept-rematch')}>Accept rematch</button><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('decline-rematch')}>Decline</button></> : <button disabled={waiting || !connected || !!snapshot.rematch} className="quiet-button" onClick={() => command('rematch')}>{snapshot.rematch ? 'Rematch requested' : 'Request rematch'}</button>}</div>}
-                <h2>Moves</h2><ol className="online-moves">{snapshot.history.map((move, i) => <li key={i}><span>{i + 1}.</span><span>{square(move.from)} → {square(move.to)}{move.kind === 'rotate' ? ' (switch)' : 'promotion' in move && move.promotion ? ` = ${move.promotion}` : ''}</span></li>)}</ol>
-                <p className="online-notice" role="status">{notice}</p><Link href="/">Back to play</Link>
+                <div className="online-move-heading"><h2>Moves</h2><span>{snapshot.history.length} played</span></div>{snapshot.history.length ? <ol className="online-moves">{Array.from({ length: Math.ceil(snapshot.history.length / 2) }, (_, i) => <li key={i}><span>{i + 1}.</span>{[0, 1].map(side => { const move = snapshot.history[i * 2 + side]; return <span key={side}>{move ? `${square(move.from)} → ${square(move.to)}${move.kind === 'rotate' ? ' (switch)' : 'promotion' in move && move.promotion ? ` = ${move.promotion}` : ''}` : '—'}</span>; })}</li>)}</ol> : <p className="online-empty-moves">The board is ready.<br />{game.turn === color ? 'Make your opening move.' : 'Waiting for the opening move.'}</p>}
+                <p className="online-notice" role="status">{notice}</p><Link className="online-home-link" href="/">Back to play</Link>
             </aside></div></section>;
 }

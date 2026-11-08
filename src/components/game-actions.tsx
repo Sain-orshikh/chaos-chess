@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Icon from "./icon";
-import Link from "next/link";
 
 type Props = {
     finished: boolean;
@@ -40,7 +39,6 @@ export default function GameActions({ finished, drawDisabled, onResign, onOfferD
                 {onFlip && <button type="button" onClick={() => act(onFlip)}>Flip board</button>}
                 {onCopyLink && <button type="button" onClick={() => act(onCopyLink)}>Copy game link</button>}
                 {onSetup && <button type="button" onClick={() => finished ? act(onSetup) : setConfirm("setup")}>Match setup</button>}
-                <Link href="/encyclopedia">Piece rules</Link>
             </>}
         </div>
     </details>;

@@ -20,9 +20,10 @@ type Props = {
 
 export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard, ratingSummary, playAgainLabel = "Play again", matchLabel }: Props) {
     const dialog = useRef<HTMLDialogElement>(null);
+    const abandoned = status.kind === "draw" && status.reason === "abandoned";
     const draw = status.kind === "stalemate" || status.kind === "draw";
     const won = "winner" in status && status.winner === playerColor;
-    const title = draw ? "Draw" : won ? "You won" : "You lost";
+    const title = abandoned ? "Match abandoned" : draw ? "Draw" : won ? "You won" : "You lost";
     const opponentColor = playerColor === "white" ? "black" : "white";
     const winnerColor = "winner" in status ? status.winner : playerColor;
     const reason = status.kind === "stalemate" ? "Stalemate" : status.kind === "draw" ? status.reason === "agreement" ? "Draw by agreement" : status.reason === "abandoned" ? "Match abandoned · No rating change" : status.reason === "timeout" ? "Time expired · Opponent cannot checkmate" : status.reason === "insufficient-material" ? "Insufficient material" : "75 moves by each side without a pawn move or capture"
@@ -49,12 +50,12 @@ export default function GameResultModal({ status, playerColor, playerName, oppon
             <div className={won ? "winner" : ""}>
                 <span className={`player-color ${playerColor}`} />
                 <span className="result-player"><strong>{playerName}</strong><small>{playerColor === "white" ? "White" : "Black"}</small></span>
-                <span className="result-score">{draw ? "½" : won ? "1" : "0"}</span>
+                <span className="result-score">{abandoned ? "—" : draw ? "½" : won ? "1" : "0"}</span>
             </div>
             <div className={!draw && !won ? "winner" : ""}>
                 <span className={`player-color ${opponentColor}`} />
                 <span className="result-player"><strong>{opponentName}</strong><small>{opponentColor === "white" ? "White" : "Black"}</small></span>
-                <span className="result-score">{draw ? "½" : won ? "0" : "1"}</span>
+                <span className="result-score">{abandoned ? "—" : draw ? "½" : won ? "0" : "1"}</span>
             </div>
         </div>
         <div className="result-actions">

@@ -53,7 +53,6 @@ function PreviewMatch({ ruleset, gameId }: { ruleset: Ruleset; gameId: string })
 
     if (gameId !== "demo") return <section className="match-unavailable"><h1>Game unavailable</h1><p>Live game rooms aren’t connected yet.</p><Link className="primary-button" href={`/${ruleset === "chaos" ? "chaos" : "classic"}/demo`}>Open the board preview</Link></section>;
     return <section className="online-match-page">
-        <div className="page-heading"><div><p className="online-eyebrow">MULTIPLAYER</p><h1>{label}</h1></div><span className="preview-tag">Board preview</span></div>
         <div className="online-preview-note"><div><strong>Try the match experience</strong><p>Moves stay on this page. Clocks are paused, and ratings won’t change.</p></div><button className="quiet-button" onClick={switchPlayer}>Switch player</button></div>
         <div className="online-match-layout">
             <Board key={matchNumber} game={game} onAction={dispatch} ruleset={ruleset} orientation={orientation} locked={game.turn !== color}
