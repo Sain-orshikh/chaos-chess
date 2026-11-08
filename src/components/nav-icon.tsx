@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useId } from "react";
 
 export type NavIconName = "chaos" | "classic" | "bot" | "local" | "book" | "lab" | "trophy";
 
@@ -11,9 +12,19 @@ const silhouettes = {
   trophy: "M7 2h18v13c0 5-3 8-7 10v6h6v4H8v-4h6v-6c-4-2-7-5-7-10ZM0 6h5v4H4v5l4 3v5l-8-6Zm27 0h5v11l-8 6v-5l4-3v-5h-1ZM5 37h22v3H5ZM14 7v7h4V7Z",
 } as const;
 
+// Follow each silhouette's diagonal break, leaving its lower section silver.
+const accentClips = {
+  classic: ["0,0 32,0 32,19 0,33"],
+  local: ["0,0 20,0 20,26 0,35", "20,0 40,0 40,28 20,37"],
+  book: ["0,0 32,0 32,17 0,31"],
+  lab: ["0,0 32,0 32,24 0,38"],
+  trophy: ["0,0 32,0 32,17 0,31"],
+} as const;
+
 export default function NavIcon({ name }: { name: NavIconName }) {
+  const accentId = useId();
   if (name === "chaos" || name === "bot") {
     return <Image src={name === "chaos" ? "/brand-bishop.svg" : "/brand-rooke.svg"} width={20} height={24} alt="" className="nav-symbol nav-brand-symbol" />;
   }
-  return <svg className="nav-symbol" viewBox={name === "local" ? "0 0 40 40" : "0 0 32 40"} fill="currentColor" fillRule="evenodd" aria-hidden="true"><path d={silhouettes[name]} /></svg>;
+  return <svg className="nav-symbol" viewBox={name === "local" ? "0 0 40 40" : "0 0 32 40"} fill="currentColor" fillRule="evenodd" aria-hidden="true"><defs><clipPath id={accentId}>{accentClips[name].map(points => <polygon key={points} points={points} />)}</clipPath></defs><path d={silhouettes[name]} /><path className="nav-symbol-accent" d={silhouettes[name]} clipPath={`url(#${accentId})`} /></svg>;
 }

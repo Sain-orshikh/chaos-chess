@@ -19,6 +19,7 @@
   --border-selected: #87919f;
   --shadow: #353c47;
   --red: #ce4b5e;
+  --brand-red: #df2634;
   --red-button: #3a222c;
   --red-button-hover: #4a2b37;
   --red-border: #a34f5d;
@@ -1672,7 +1673,7 @@ h1, h2, h3 {
 .resume-match p { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
 
 .nav-symbol { width: 20px; height: 24px; flex-shrink: 0; object-fit: contain; color: var(--foreground); }
-.nav-brand-symbol { filter: brightness(0) invert(1); }
+.nav-symbol-accent { fill: var(--brand-red); }
 
 .google-sign-in { display: block; text-align: center; padding: 12px 16px; margin: 16px 0; border: 1px solid var(--border-selected); border-radius: 8px; text-decoration: none; font-weight: 600; }
 .google-sign-in:hover { background: rgba(128, 128, 128, .15); }
