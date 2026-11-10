@@ -1,6 +1,6 @@
-# Chaos Chess
+# Havoc Chess
 
-Next.js interface with an Express / MongoDB account backend, online Classic/Chaos play, and a cached Elo leaderboard. The Play bot page includes Rooke using the existing custom chess engine.
+Next.js interface with an Express / MongoDB account backend, online Classic/Havoc play, and a cached Elo leaderboard. The Play bot page includes Rooke using the existing custom chess engine.
 
 ## Run locally
 
@@ -105,3 +105,12 @@ Leaderboard snapshots include profile-image URLs and up to three equipped badge 
 The page footer notes that changes may take 6–7 minutes to appear.
 See [the architecture and free-tier budget](docs/leaderboard-plan.md) for rollout
 checks, index requirements, failure behavior, and usage estimates.
+
+
+### Developer’s note and search visibility
+
+The sidebar and top bar open the developer’s note. `/about` serves the same content as a public page; edit `src/components/developer-note.tsx` to update both. The homepage and note link to Sainorshikh’s portfolio.
+
+Public pages have individual titles, descriptions, canonical URLs, social previews, and a sitemap at `/sitemap.xml`. The production origin is defined in `src/lib/site.ts`; update it if the domain changes. `/chaos` and its match URLs permanently redirect to `/havoc`. The internal `chaos` ruleset and badge IDs remain stable for existing matches, saves, and accounts. Individual match pages use `noindex` and are excluded from the sitemap.
+
+After deployment, verify the production property in Google Search Console, submit the sitemap, and inspect `/` and `/about` for indexing. Confirm the portfolio’s Havoc Chess entry links to the production game. These account-level steps are separate from the repository changes.

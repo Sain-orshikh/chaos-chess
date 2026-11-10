@@ -15,7 +15,7 @@ export const benchmarkPositions = [
 
 export type BenchmarkPosition = { board: Board; turn: Color; fen: string; standard?: StandardState; halfmoveClock: number };
 
-/** Strict validation at the custom-input boundary; engine rules remain Chaos Chess. */
+/** Strict validation at the custom-input boundary; engine rules remain Havoc Chess. */
 export function parseBenchmarkFen(input: string, ruleset: Ruleset = "chaos"): BenchmarkPosition {
     const fields = input.trim().split(/\s+/);
     if (![1, 2, 6].includes(fields.length)) throw new Error("Enter a board layout, layout plus turn, or a complete six-field FEN.");
@@ -26,7 +26,7 @@ export function parseBenchmarkFen(input: string, ruleset: Ruleset = "chaos"): Be
         if (!/^\d+$/.test(fields[4]) || !/^\d+$/.test(fields[5]) || !Number.isSafeInteger(Number(fields[4])) || !Number.isSafeInteger(Number(fields[5])) || Number(fields[5]) < 1) throw new Error("Invalid move counters.");
     }
     const board = parseFen(fields[0]);
-    if (ruleset === "normal" && board.some(piece => Math.abs(piece) === pieceIds.diagonalrook)) throw new Error("Diagonal rooks are only available in Chaos Chess.");
+    if (ruleset === "normal" && board.some(piece => Math.abs(piece) === pieceIds.diagonalrook)) throw new Error("Diagonal rooks are only available in Havoc Chess.");
     const standard = ruleset === "normal" ? standardStateFromFen(input) : undefined;
     for (const color of ["white", "black"] as const) {
         if (board.filter(piece => piece === makePiece("king", color)).length !== 1) throw new Error("The position must contain exactly one king of each color.");

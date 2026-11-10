@@ -38,7 +38,7 @@ function PreviewMatch({ ruleset, gameId }: { ruleset: Ruleset; gameId: string })
         black: { name: "Jamie Chen", image: "/avatar-preview-black.svg", rating: 1458 },
     };
     const finished = isGameOver(game.status);
-    const label = ruleset === "chaos" ? "Chaos Chess" : "Classic Chess";
+    const label = ruleset === "chaos" ? "Havoc Chess" : "Classic Chess";
     async function copyLink() {
         try { await navigator.clipboard.writeText(window.location.href); setNotice("Game link copied."); }
         catch { setNotice("Copy the game link from your address bar."); }
@@ -51,7 +51,7 @@ function PreviewMatch({ ruleset, gameId }: { ruleset: Ruleset; gameId: string })
     const [rematchFrom, setRematchFrom] = useState<Color | null>(null);
     function offerRematch() { setRematchFrom(color); requestRematch(); }
 
-    if (gameId !== "demo") return <section className="match-unavailable"><h1>Game unavailable</h1><p>Live game rooms aren’t connected yet.</p><Link className="primary-button" href={`/${ruleset === "chaos" ? "chaos" : "classic"}/demo`}>Open the board preview</Link></section>;
+    if (gameId !== "demo") return <section className="match-unavailable"><h1>Game unavailable</h1><p>Live game rooms aren’t connected yet.</p><Link className="primary-button" href={`/${ruleset === "chaos" ? "havoc" : "classic"}/demo`}>Open the board preview</Link></section>;
     return <section className="online-match-page">
         <div className="online-preview-note"><div><strong>Try the match experience</strong><p>Moves stay on this page. Clocks are paused, and ratings won’t change.</p></div><button className="quiet-button" onClick={switchPlayer}>Switch player</button></div>
         <div className="online-match-layout">

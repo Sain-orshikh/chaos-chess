@@ -19,7 +19,7 @@ export function createMatchmaker({ tickets = Ticket, games = Game, users = User,
         return { state: 'queued', ruleset: ticket.ruleset, timeMs: ticket.timeMs, joinedAt: ticket.joinedAt, range: ratingRange(ticket.joinedAt, at), serverNow: at };
     }
     async function run(userId, action, config = {}) {
-        if (action === 'join' && !validQueue(config.ruleset, config.timeMs)) throw new MatchError('Choose Chaos or Classic and a 5- or 10-minute clock.', 400);
+        if (action === 'join' && !validQueue(config.ruleset, config.timeMs)) throw new MatchError('Choose Havoc or Classic and a 5- or 10-minute clock.', 400);
         // The same IDs survive transaction retries; no duplicate game on an unknown commit outcome.
         const gameId = new mongoose.Types.ObjectId(), whiteFirst = coin() === 0;
         for (let attempt = 0; attempt < 3; attempt++) {

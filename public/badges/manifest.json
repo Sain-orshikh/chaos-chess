@@ -59,8 +59,8 @@
     },
     {
       "id": "chaos-theory",
-      "name": "Chaos Theory",
-      "description": "Win 10 Chaos multiplayer matches.",
+      "name": "Havoc Unleashed",
+      "description": "Win 10 Havoc multiplayer matches.",
       "category": "Playstyles",
       "secret": false,
       "artwork": "/badges/chaos-theory.svg"

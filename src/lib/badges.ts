@@ -21,7 +21,7 @@ export function badgeProgressLabel(id: string, user: User): string | null {
     case 'on-the-rise': return `${user.elo} / 600 Elo`;
     case 'four-figures': return `${user.elo} / 1,000 Elo`;
     case 'by-the-book': return `${Math.min(progress?.classicWins || 0, 10)} / 10 Classic wins`;
-    case 'chaos-theory': return `${Math.min(progress?.chaosWins || 0, 10)} / 10 Chaos wins`;
+    case 'chaos-theory': return `${Math.min(progress?.chaosWins || 0, 10)} / 10 Havoc wins`;
     case 'hat-trick': return `${Math.min(progress?.winStreak || 0, 3)} / 3 consecutive wins`;
     default: return null;
   }

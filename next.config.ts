@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [{ source: "/chaos/:path*", destination: "/havoc/:path*", permanent: true }];
+  },
   async rewrites() {
     // Services owns /api routing on Vercel. Never send deployed requests to localhost.
     if (process.env.VERCEL) return [];

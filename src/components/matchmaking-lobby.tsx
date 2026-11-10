@@ -10,7 +10,7 @@ import type { Ruleset } from "./utils/types";
 
 type Search = { state: "idle" } | { state: "queued"; ruleset: Ruleset; timeMs: number; joinedAt: number; range: number | null; serverNow: number } | { state: "matched"; ruleset: Ruleset; gameId: string };
 type Counts = { online: number; queues: { ruleset: Ruleset; timeMs: number; count: number }[] };
-const modeName = (ruleset: Ruleset) => ruleset === "chaos" ? "Chaos" : "Classic Chess";
+const modeName = (ruleset: Ruleset) => ruleset === "chaos" ? "Havoc" : "Classic Chess";
 
 export default function MatchmakingLobby({ ruleset }: { ruleset: Ruleset }) {
     const { user, checking } = useAuth();
@@ -32,7 +32,7 @@ export default function MatchmakingLobby({ ruleset }: { ruleset: Ruleset }) {
             timerOrigin.current = { elapsed: Math.max(0, next.serverNow - next.joinedAt), at: performance.now() };
             setElapsed(Math.floor(timerOrigin.current.elapsed / 1000));
         }
-        if (next.state === "matched") router.replace(`/${next.ruleset === "chaos" ? "chaos" : "classic"}/${next.gameId}`);
+        if (next.state === "matched") router.replace(`/${next.ruleset === "chaos" ? "havoc" : "classic"}/${next.gameId}`);
     }, [router]);
     useEffect(() => {
         connection.current ||= crypto.randomUUID();

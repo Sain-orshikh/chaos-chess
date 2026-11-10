@@ -13,6 +13,7 @@ import Icon from "./icon";
 import NavIcon from "./nav-icon";
 import { useAuth } from "./auth-provider";
 import type { Color, Ruleset } from "./utils/types";
+import { portfolioUrl } from "@/lib/site";
 
 export default function PlayLobby({ local = false }: { local?: boolean }) {
   const { user } = useAuth();
@@ -68,11 +69,12 @@ export default function PlayLobby({ local = false }: { local?: boolean }) {
   function setup() { matchRef.current = null; setMatch(null); setSaved(readSaved()); window.scrollTo(0, 0); }
   return <section>
     <div className="page-heading"><h1>{local ? "Local 1v1" : "Play Rooke"}</h1><div className="page-actions">{!match && <Link className="quiet-button" href="/encyclopedia"><Icon name="book" />Piece rules</Link>}</div></div>
-    {match ? <div className={`match-screen${local ? "" : " bot-match-screen"}`}><Board ruleset={match.game.ruleset} game={match.game} onAction={onAction} evaluationSeed={match.evaluationSeed} orientation={match.orientation} playerName={user?.displayName || user?.username || "Anonymous"} playerImage={user?.profileImg} bot={!local} onSetup={setup} /><p className="match-note">{match.game.ruleset === "chaos" ? "Chaos Chess" : "Classic Chess"} · Unrated · No Elo or match count changes</p></div> : <div className="match-setup">
+    {!local && !match && <p className="project-intro">Havoc Chess is a chess variant by <a href={portfolioUrl} rel="author">Sainorshikh</a>. New moves, a fresh challenge. <Link href="/about">The story behind the game <span aria-hidden="true">↗</span></Link></p>}
+    {match ? <div className={`match-screen${local ? "" : " bot-match-screen"}`}><Board ruleset={match.game.ruleset} game={match.game} onAction={onAction} evaluationSeed={match.evaluationSeed} orientation={match.orientation} playerName={user?.displayName || user?.username || "Anonymous"} playerImage={user?.profileImg} bot={!local} onSetup={setup} /><p className="match-note">{match.game.ruleset === "chaos" ? "Havoc Chess" : "Classic Chess"} · Unrated · No Elo or match count changes</p></div> : <div className="match-setup">
       <div className="match-opponent">{local ? <NavIcon name="local" /> : <Image src="/brand-rooke.svg" width={44} height={60} alt="" className="rooke-logo" />}<div><h2>{local ? "Two players, one board" : <>Rooke <span className="bot-rating" title="Provisional Classic chess rating">(1650)</span></>}</h2><p>{local ? "Take turns on this device." : "Play against our current engine."}</p></div></div>
-      {saved && <div className="resume-match"><div><strong>Continue your {local ? "local" : "bot"} match</strong><p>{saved.game.ruleset === "chaos" ? "Chaos Chess" : "Classic Chess"} · Saved for 3 hours after your last move</p></div><button className="quiet-button" onClick={resumeMatch}>Resume match<Icon name="play" /></button></div>}
+      {saved && <div className="resume-match"><div><strong>Continue your {local ? "local" : "bot"} match</strong><p>{saved.game.ruleset === "chaos" ? "Havoc Chess" : "Classic Chess"} · Saved for 3 hours after your last move</p></div><button className="quiet-button" onClick={resumeMatch}>Resume match<Icon name="play" /></button></div>}
       <h2>Choose your rules</h2>
-      <div className="color-options">{(["chaos", "normal"] as const).map(value => <button key={value} className={ruleset === value ? "selected" : ""} aria-pressed={ruleset === value} onClick={() => setRuleset(value)}>{value === "chaos" ? "Chaos Chess" : "Classic Chess"}</button>)}</div>
+      <div className="color-options">{(["chaos", "normal"] as const).map(value => <button key={value} className={ruleset === value ? "selected" : ""} aria-pressed={ruleset === value} onClick={() => setRuleset(value)}>{value === "chaos" ? "Havoc Chess" : "Classic Chess"}</button>)}</div>
       <p>{ruleset === "chaos" ? "Our variant pieces and once-per-side castling." : "Standard piece movement, castling rights, and en passant."}</p>
       <h2>{local ? "Choose the board orientation" : "Choose your side"}</h2>
       <div className="color-options">{(["white", "random", "black"] as const).map(color => <button key={color} className={side === color ? "selected" : ""} aria-pressed={side === color} onClick={() => setSide(color)}><i className={`color-dot ${color}`} />{color[0].toUpperCase() + color.slice(1)}</button>)}</div>

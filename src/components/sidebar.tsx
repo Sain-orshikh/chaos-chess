@@ -11,7 +11,7 @@ import AccountDialog, { type AccountAction } from "./account-dialog";
 import BadgeDialog from './badge-dialog';
 import BadgeStrip from './badge-strip';
 
-export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen: boolean; collapsed: boolean; onClose: () => void }) {
+export default function Sidebar({ mobileOpen, collapsed, onClose, onDeveloperNote }: { mobileOpen: boolean; collapsed: boolean; onClose: () => void; onDeveloperNote: () => void }) {
   const pathname = usePathname();
   const { user, checking, signOut } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -59,9 +59,9 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
     {mobileOpen && <button className="sidebar-shade" aria-label="Dismiss navigation" onClick={onClose} tabIndex={-1} />}
     <aside ref={aside} className="sidebar" id="sidebar" aria-label="Main navigation">
       <button ref={closeButton} className="icon-button sidebar-close" onClick={onClose} aria-label="Close sidebar"><Icon name="close" /></button>
-      <Link className="brand" href="/" aria-label="Chaos Chess home" onClick={onClose}>
+      <Link className="brand" href="/" aria-label="Havoc Chess home" onClick={onClose}>
         <Image src="/brand-bishop.svg" width={36} height={60} alt="" className="brand-bishop" />
-        <svg className="brand-lettering" viewBox="730 250 1010 500" aria-hidden="true"><defs><clipPath id="brand-lettering-crop"><path d="M775 250H1740V750H730V510H775Z" /></clipPath></defs><image href="/brand-lettering-source.png" width="1774" height="887" clipPath="url(#brand-lettering-crop)" /></svg>
+        <span className="brand-lettering" aria-hidden="true"><strong>HAVOC</strong><span>CHESS</span></span>
       </Link>
       <div className="profile-container" ref={profileRef}>
         <button className="profile-toggle" aria-expanded={profileOpen} aria-controls="profile-menu" onClick={() => setProfileOpen(!profileOpen)}>
@@ -82,7 +82,7 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
       <div className="profile-stats"><div><strong>{user?.elo?.toLocaleString() ?? "—"}</strong><span>Elo rating</span></div><div><strong>{user?.matches?.toLocaleString() ?? "—"}</strong><span>Matches</span></div><div><strong>{user?.wins?.toLocaleString() ?? "—"}</strong><span>Wins</span></div></div>
       <p className="nav-label">Play</p>
       <nav className="nav" aria-label="Game modes">
-        <Link href="/chaos" className={(pathname === "/chaos" || pathname.startsWith("/chaos/")) ? "active" : ""} onClick={onClose}><NavIcon name="chaos" />Chaos</Link>
+        <Link href="/havoc" className={(pathname === "/havoc" || pathname.startsWith("/havoc/")) ? "active" : ""} onClick={onClose}><NavIcon name="chaos" />Havoc</Link>
         <Link href="/classic" className={(pathname === "/classic" || pathname.startsWith("/classic/")) ? "active" : ""} onClick={onClose}><NavIcon name="classic" />Classic Chess</Link>
         <Link href="/" className={pathname === "/" ? "active" : ""} aria-current={pathname === "/" ? "page" : undefined} onClick={onClose}><NavIcon name="bot" />Play bot</Link>
         <Link href="/local" className={pathname === "/local" ? "active" : ""} aria-current={pathname === "/local" ? "page" : undefined} onClick={onClose}><NavIcon name="local" />Local 1v1</Link>
@@ -92,8 +92,9 @@ export default function Sidebar({ mobileOpen, collapsed, onClose }: { mobileOpen
         <Link href="/encyclopedia" className={pathname === "/encyclopedia" ? "active" : ""} aria-current={pathname === "/encyclopedia" ? "page" : undefined} onClick={onClose}><NavIcon name="book" />Encyclopedia</Link>
         <Link href="/engine-lab" className={pathname === "/engine-lab" ? "active" : ""} aria-current={pathname === "/engine-lab" ? "page" : undefined} onClick={onClose}><NavIcon name="lab" />Engine lab</Link>
         <Link href="/leaderboard" className={pathname === "/leaderboard" ? "active" : ""} aria-current={pathname === "/leaderboard" ? "page" : undefined} onClick={onClose}><NavIcon name="trophy" />Leaderboard</Link>
+        <button type="button" aria-haspopup="dialog" onClick={onDeveloperNote}><NavIcon name="book" />Developer’s note</button>
       </nav>
-      <footer className="side-footer"><small><b>●</b> Early access<span>v.01</span></small><small>Chaos Chess © 2026</small></footer>
+      <footer className="side-footer"><small><b>●</b> Early access<span>v.01</span></small><small>Havoc Chess © 2026</small></footer>
     </aside>
     {action && <AccountDialog action={action} onClose={() => { setAction(null); profileRef.current?.querySelector("button")?.focus(); }} />}
     {badgesOpen && <BadgeDialog onClose={() => { setBadgesOpen(false); profileRef.current?.querySelector('button')?.focus(); }} />}

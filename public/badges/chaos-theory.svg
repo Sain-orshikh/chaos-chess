@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="168" height="192" viewBox="0 0 126 144" role="img" aria-labelledby="badge-title">
-<title id="badge-title">Chaos Theory</title>
+<title id="badge-title">Havoc Unleashed</title>
 <defs><linearGradient id="shield" x2=".8" y2="1"><stop stop-color="#33252d"/><stop offset="1" stop-color="#19171d"/></linearGradient><clipPath id="inside"><polygon points="19,2 107,2 124,20 124,100 104,122 63,141 22,122 2,100 2,20"/></clipPath></defs>
 <polygon points="18,0 108,0 126,19 126,101 105,124 63,144 21,124 0,101 0,19" fill="#69616e"/><polygon points="19,2 107,2 124,20 124,100 104,122 63,141 22,122 2,100 2,20" fill="#211d25"/>
 <polygon points="24,9 102,9 117,25 117,97 98,116 63,133 28,116 9,97 9,25" fill="url(#shield)"/>

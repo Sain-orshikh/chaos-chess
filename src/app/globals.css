@@ -150,10 +150,19 @@ h1, h2, h3 {
   height: 60px;
 }
 .brand-lettering {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 154px;
   height: 77px;
+  font-family: var(--font-display), sans-serif;
+  font-style: italic;
+  font-weight: 700;
+  line-height: .9;
+  color: var(--text-strong);
 }
+.brand-lettering strong { font-size: 42px; letter-spacing: .02em; }
+.brand-lettering > span { margin-top: 5px; font-size: 25px; letter-spacing: .21em; color: var(--muted); }
 .profile-container {
   position: relative;
 }
@@ -283,7 +292,7 @@ h1, h2, h3 {
   font-size: 14px;
   transition: transform .12s, box-shadow .12s, background .12s;
 }
-.nav > a:hover {
+.nav > a:hover, .nav > button:not(:disabled):hover {
   transform: translate(3px,3px);
   box-shadow: none;
   background: var(--surface-hover);
@@ -375,6 +384,10 @@ h1, h2, h3 {
   background: var(--surface-hover);
 }
 .breadcrumb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   color: var(--muted);
 }
@@ -385,6 +398,34 @@ h1, h2, h3 {
 .breadcrumb strong {
   font-weight: 500;
   color: var(--text-strong);
+}
+.note-trigger { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; color: var(--muted); font-size: 12px; }
+.note-trigger svg { width: 16px; height: 16px; }
+.note-trigger:hover { color: var(--text-strong); background: var(--surface); }
+.project-intro { max-width: 680px; margin: -8px 0 25px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.project-intro a, .developer-note-copy a, .note-footer a { color: var(--text-strong); text-decoration: underline; text-decoration-color: var(--red-border); text-underline-offset: 4px; }
+.project-intro a:hover, .developer-note-copy a:hover, .note-footer a:hover { color: var(--red-text); }
+body:has(.developer-note-dialog[open]) { overflow: hidden; }
+.developer-note-dialog { position: fixed; inset: 0; margin: auto; width: min(700px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; background: var(--panel); color: var(--foreground); border: 1px solid var(--border); border-top: 3px solid var(--red); border-radius: 7px; padding: 32px 38px; box-shadow: 0 24px 100px #000b; }
+.developer-note-dialog::backdrop { background: #000c; backdrop-filter: blur(4px); }
+.developer-note-dialog .dialog-heading { align-items: flex-start; margin-bottom: 12px; }
+.developer-note-dialog .dialog-heading .icon-button { flex-shrink: 0; }
+.note-eyebrow { margin: 0 0 8px; color: var(--red-text); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
+.developer-note-copy { font-size: 15px; line-height: 1.8; }
+.developer-note-copy p { margin: 0 0 18px; }
+.developer-note-copy .note-byline { color: var(--muted); font-size: 12px; margin-bottom: 28px; }
+.developer-note-copy .note-lead { color: var(--text-strong); font-family: var(--font-display), sans-serif; font-size: clamp(28px, 5vw, 38px); font-weight: 600; line-height: 1.15; margin-bottom: 20px; }
+.developer-note-copy h3 { color: var(--text-strong); font-size: 24px; margin: 28px 0 10px; }
+.developer-note-copy .note-signature { color: var(--red-text); margin-top: 26px; }
+.note-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; }
+.developer-note-page { width: 100%; max-width: 720px; margin: 16px auto; padding: 32px 38px; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--red); border-radius: 7px; }
+.developer-note-page h1 { font-size: 40px; margin: 0 0 10px; }
+@media (max-width: 600px) {
+  .note-trigger { padding: 8px; }
+  .note-trigger span { display: none; }
+  .developer-note-dialog { max-height: calc(100dvh - 24px); padding: 22px; }
+  .developer-note-page { padding: 24px 20px; margin: 0; }
+  .developer-note-copy { font-size: 14px; }
 }
 .page-content {
   max-width: 1450px;

@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import Leaderboard from "@/components/leaderboard";
 
-export const metadata: Metadata = { title: "Leaderboard · Chaos Chess", description: "The top 100 Chaos Chess players, ranked by Elo." };
+export const metadata = pageMetadata("Leaderboard", "Climb the Havoc Chess leaderboard, compete in rated online matches, and earn badges.", "/leaderboard");
 
 export default function LeaderboardPage() { return <Leaderboard />; }

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import AppShell from "@/components/app-shell";
+import { portfolioUrl, siteDescription, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const barlow = localFont({ variable: "--font-interface", display: "swap", src: [
@@ -18,8 +19,12 @@ const barlowCondensed = localFont({ variable: "--font-display", display: "swap",
 ] });
 
 export const metadata: Metadata = {
-  title: "Chaos Chess",
-  description: "Custom chess. Play a local match and discover how the pieces move.",
+  metadataBase: new URL(siteUrl),
+  title: { default: "Havoc Chess — Play Chess Online | By Sainorshikh", template: "%s | Havoc Chess" },
+  description: siteDescription,
+  applicationName: "Havoc Chess",
+  authors: [{ name: "Sainorshikh", url: portfolioUrl }],
+  creator: "Sainorshikh",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -158,7 +158,7 @@ export default function EngineLab() {
             <div className="lab-configuration">
                 <fieldset disabled={busy}>
                     <legend className="sr-only">Benchmark configuration</legend>
-                    <label className="lab-field">Rules<select value={game.ruleset} onChange={event => loadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "start", event.target.value as Ruleset)}><option value="chaos">Chaos Chess</option><option value="normal">Classic Chess</option></select></label>
+                    <label className="lab-field">Rules<select value={game.ruleset} onChange={event => loadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "start", event.target.value as Ruleset)}><option value="chaos">Havoc Chess</option><option value="normal">Classic Chess</option></select></label>
                     <label className="lab-field">Position<select value={preset} onChange={event => {
                         const item = benchmarkPositions.find(item => item.id === event.target.value);
                         if (item) loadPosition(item.fen, item.id);
@@ -166,7 +166,7 @@ export default function EngineLab() {
                     }}>{benchmarkPositions.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}<option value="custom">Custom FEN</option></select></label>
                     <form onSubmit={event => { event.preventDefault(); loadPosition(fen, "custom"); }}>
                         <label className="lab-field">FEN position<textarea rows={3} spellCheck={false} value={fen} onChange={event => setFen(event.target.value)} aria-describedby="fen-help" /></label>
-                        <div className="lab-fen-footer"><small id="fen-help">{game.ruleset === "normal" ? "Normal rules. FEN includes castling rights and en passant." : "Chaos rules. D/d denotes a diagonal rook; standard castling and en passant fields are ignored."}</small><button className="quiet-button" type="submit">Load FEN</button></div>
+                        <div className="lab-fen-footer"><small id="fen-help">{game.ruleset === "normal" ? "Normal rules. FEN includes castling rights and en passant." : "Havoc rules. D/d denotes a diagonal rook; standard castling and en passant fields are ignored."}</small><button className="quiet-button" type="submit">Load FEN</button></div>
                     </form>
                     <div className="lab-options">
                         <label className="lab-field">Maximum depth<select value={depth} onChange={event => setDepth(Number(event.target.value))}>{Array.from({ length: 16 }, (_, index) => index + 1).map(value => <option key={value} value={value}>{value} {value === 1 ? "ply" : "plies"}</option>)}</select></label>
