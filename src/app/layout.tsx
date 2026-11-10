@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   applicationName: "Havoc Chess",
   authors: [{ name: "Sainorshikh", url: portfolioUrl }],
   creator: "Sainorshikh",
+  verification: { google: "OlRiDilJZUDfUlyunSmM8IzvSglIRLM1i4K3SaX1LmI" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
