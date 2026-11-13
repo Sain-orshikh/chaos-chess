@@ -2,6 +2,7 @@ import { createGame, gameReducer, isGameOver, parseFen, pieceColor } from '../ge
 export const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 export const GRACE_MS = 60_000;
 export const LEASE_MS = 20_000;
+export const REMATCH_WINDOW_MS = 60_000;
 const other = color => color === 'white' ? 'black' : 'white';
 export class MatchError extends Error { constructor(message, status = 409) { super(message); this.status = status; } }
 export function initialMatch(ruleset, timeMs, incrementMs, now) {
@@ -78,6 +79,7 @@ export function transition(input, color, command, now, lagMs = 0) {
         else state.game.drawOffer = null;
     } else if (command.type === 'rematch' || command.type === 'accept-rematch' || command.type === 'decline-rematch') {
         if (!state.outcome) throw new MatchError('Finish this match first.');
+        if (now >= state.outcome.at + REMATCH_WINDOW_MS) throw new MatchError('The rematch window has expired.', 410);
         if (command.type === 'rematch') { if (state.rematch) throw new MatchError('Rematch already requested.'); state.rematch = color; }
         else { if (!state.rematch || state.rematch === color) throw new MatchError('There is no opponent rematch request.'); if (command.type === 'decline-rematch') state.rematch = null; }
     } else throw new MatchError('Unknown command.', 400);
@@ -99,6 +101,7 @@ export function publicMatch(document, color, now) {
     return { gameId: String(document._id), color, ruleset: s.game.ruleset, revision: s.revision, game: s.game, history: s.history,
         clocks: clockAt(s, now), serverNow: now, incrementMs: s.incrementMs, timeMs: s.timeMs,
         connected: Object.fromEntries(['white', 'black'].map(side => [side, Object.values(s.presence[side]).some(expiry => expiry > now)])),
-        outcome: s.outcome, rematch: s.rematch, nextGameId: s.nextGameReady ? s.nextGameId : null, ratings: document.ratings, rated: document.rated, players: document.players,
+        outcome: s.outcome, rematchUntil: s.outcome ? s.outcome.at + REMATCH_WINDOW_MS : null,
+        rematch: s.rematch, nextGameId: s.nextGameReady ? s.nextGameId : null, ratings: document.ratings, rated: document.rated, players: document.players,
         achievements: document.achievements?.[color === 'white' ? 'a' : 'b'] || null };
 }

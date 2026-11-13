@@ -14,7 +14,7 @@ import { BadgeUnlocks } from './badge-strip';
 
 type Snapshot = { gameId: string; color: Color; ruleset: Ruleset; revision: number; game: GameState; history: BasicMove[];
     clocks: Record<Color, number>; serverNow: number; timeMs: number; incrementMs: number;
-    connected: Record<Color, boolean>; outcome: { result: Color | 'draw' | null; reason: string } | null;
+    connected: Record<Color, boolean>; outcome: { result: Color | 'draw' | null; reason: string } | null; rematchUntil: number | null;
     rematch: Color | null; nextGameId: string | null; rated: boolean; ratings: { a: RatingChange; b: RatingChange } | null;
     achievements?: AchievementState | null;
     players: Record<Color, { name: string; image: string; rating: number; equippedBadges?: string[] }> };
@@ -28,6 +28,7 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
     const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
     const [game, setGame] = useState<GameState | null>(null);
     const [connected, setConnected] = useState(false), [waiting, setWaiting] = useState(false);
+    const [rematchExpired, setRematchExpired] = useState(false);
     const [notice, setNotice] = useState('Connecting to your opponent…'), [flipped, setFlipped] = useState(false);
     const [elapsed, setElapsed] = useState(0);
     const current = useRef<Snapshot | null>(null), preview = useRef<GameState | null>(null);
@@ -40,12 +41,23 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
         setUser(current => mergeAchievements(current, awards));
     }, [snapshot?.achievements, gameId, user?._id, setUser]);
     useEffect(() => {
-        let disposed = false, timer: ReturnType<typeof setTimeout>, heartbeat: ReturnType<typeof setInterval>, attempt = 0;
+        let disposed = false, expired = false, deadline = Infinity, timer: ReturnType<typeof setTimeout>, rematchTimer: ReturnType<typeof setTimeout>, heartbeat: ReturnType<typeof setInterval>, attempt = 0;
+        const repaint = setInterval(() => setElapsed(Math.max(0, performance.now() - receivedAt.current)), 100);
+        function expireRematch() {
+            expired = true;
+            clearTimeout(timer); clearTimeout(rematchTimer); clearInterval(heartbeat); clearInterval(repaint);
+            pending.current = null; setWaiting(false); setConnected(false); setRematchExpired(true);
+            setNotice('Rematch window expired. Start a new match from the lobby.');
+            if (socket.current && socket.current.readyState < WebSocket.CLOSING) socket.current.close(4002, 'Rematch window expired');
+        }
         function connect() {
+            if (disposed || expired) return;
+            if (performance.now() >= deadline) { expireRematch(); return; }
             const url = new URL(`/api/live/${encodeURIComponent(gameId)}/socket`, window.location.href); url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
             const ws = new WebSocket(url); socket.current = ws;
-            ws.onopen = () => { attempt = 0; setConnected(true); setNotice(''); if (pending.current) ws.send(JSON.stringify(pending.current)); heartbeat = setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'heartbeat' })); }, 10_000); };
+            ws.onopen = () => { if (disposed || expired) { ws.close(); return; } attempt = 0; setConnected(true); setRematchExpired(false); setNotice(''); if (pending.current) ws.send(JSON.stringify(pending.current)); heartbeat = setInterval(() => { if (performance.now() >= deadline) { expireRematch(); return; } if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'heartbeat' })); }, 10_000); };
             ws.onmessage = event => {
+                if (disposed || expired) return;
                 let message; try { message = JSON.parse(event.data); } catch { return; }
                 if (message.type === 'error') { setNotice(message.error); if (current.current) { preview.current = current.current.game; setGame(current.current.game); } pending.current = null; setWaiting(false); ws.send(JSON.stringify({ type: 'heartbeat' })); return; }
                 if (message.type !== 'snapshot') return;
@@ -57,21 +69,30 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
                 current.current = next; receivedAt.current = performance.now(); setElapsed(0); setSnapshot(next);
                 if (pending.current && changed) { pending.current = null; setWaiting(false); }
                 if (next.nextGameId) router.replace(`/${ruleset === 'normal' ? 'classic' : 'havoc'}/${next.nextGameId}`);
+                if (next.rematchUntil != null) {
+                    // Server time avoids clock skew; repeated snapshots and reconnects cannot restart the window.
+                    deadline = Math.min(deadline, performance.now() + Math.max(0, next.rematchUntil - next.serverNow));
+                    clearTimeout(rematchTimer);
+                    if (performance.now() >= deadline) expireRematch();
+                    else rematchTimer = setTimeout(expireRematch, deadline - performance.now());
+                }
             };
             ws.onclose = event => {
                 clearInterval(heartbeat); setConnected(false);
                 if (disposed) return;
+                if (expired || event.code === 4002 || performance.now() >= deadline) { expireRematch(); return; }
                 setNotice(event.code === 4001 ? 'Your session expired. Sign in again to reconnect.' : 'Reconnecting… Your chess clock continues.');
                 if (event.code !== 4001) timer = setTimeout(connect, Math.min(5000, 500 * 2 ** attempt++) + Math.random() * 250);
             };
-            ws.onerror = () => setNotice('Could not connect. Check your connection and sign-in status.');
+            ws.onerror = () => { if (!disposed && !expired) setNotice('Could not connect. Check your connection and sign-in status.'); };
         }
-        connect(); const repaint = setInterval(() => setElapsed(Math.max(0, performance.now() - receivedAt.current)), 100);
-        return () => { disposed = true; clearTimeout(timer); clearInterval(heartbeat); clearInterval(repaint); socket.current?.close(); current.current = null; pending.current = null; };
+        connect();
+        return () => { disposed = true; clearTimeout(timer); clearTimeout(rematchTimer); clearInterval(heartbeat); clearInterval(repaint); socket.current?.close(); current.current = null; pending.current = null; };
     }, [gameId, ruleset, router]);
     const command = useCallback((type: string, extra: object = {}) => {
         const state = current.current, ws = socket.current;
         if (!state || !ws || ws.readyState !== WebSocket.OPEN || pending.current) return;
+        if (state.rematchUntil != null && state.serverNow + performance.now() - receivedAt.current >= state.rematchUntil) return;
         const request = { ...extra, type, id: crypto.randomUUID(), revision: state.revision };
         pending.current = request; setWaiting(true); ws.send(JSON.stringify(request));
     }, []);
@@ -104,12 +125,13 @@ export default function LiveMatch({ ruleset, gameId }: { ruleset: Ruleset; gameI
                     onResign={() => command('resign')} onOfferDraw={() => command('offer-draw')} onFlip={() => setFlipped(value => !value)}
                     onCopyLink={async () => { try { await navigator.clipboard.writeText(window.location.href); setNotice('Game link copied.'); } catch { setNotice('Copy the link from your address bar.'); } }} />,
                 onRematch: () => { if (!snapshot.rematch) command('rematch'); else if (snapshot.rematch !== color) command('accept-rematch'); },
-                rematchLabel: snapshot.rematch === color ? 'Rematch requested' : snapshot.rematch ? 'Accept rematch' : 'Request rematch' }} />
+                rematchDisabled: rematchExpired || !connected || waiting || snapshot.rematch === color,
+                rematchLabel: rematchExpired ? 'Rematch window expired' : snapshot.rematch === color ? 'Rematch requested' : snapshot.rematch ? 'Accept rematch' : 'Request rematch' }} />
             <aside className="online-match-panel" aria-label="Match information"><div className={`match-info-heading${!finished && game.turn === color ? ' is-your-turn' : ''}`}><span className={`player-color ${game.turn}`} aria-hidden="true" /><strong>{finished ? 'Match finished' : waiting ? 'Sending…' : game.turn === color ? 'Your turn' : 'Waiting for opponent'}</strong></div>
-                <div className="match-session-meta"><span>{ruleset === 'normal' ? 'Classic' : 'Havoc'} · {Math.round(snapshot.timeMs / 60_000)} + {snapshot.incrementMs / 1000}</span><span className={connected ? 'match-connected' : 'match-reconnecting'}>{connected ? 'Connected' : 'Reconnecting'}</span></div><p className="online-playing-as">Playing as <strong>{color === 'white' ? 'White' : 'Black'}</strong></p>
+                <div className="match-session-meta"><span>{ruleset === 'normal' ? 'Classic' : 'Havoc'} · {Math.round(snapshot.timeMs / 60_000)} + {snapshot.incrementMs / 1000}</span><span className={connected ? 'match-connected' : 'match-reconnecting'}>{rematchExpired ? 'Disconnected' : connected ? 'Connected' : 'Reconnecting'}</span></div><p className="online-playing-as">Playing as <strong>{color === 'white' ? 'White' : 'Black'}</strong></p>
                 {!snapshot.connected[opposite(color)] && !finished && <p role="status">Opponent disconnected. They have 60 seconds to return; their chess clock continues.</p>}
                 {game.drawOffer && <div className="online-offer"><strong>{game.drawOffer === color ? 'Draw offer sent' : 'Your opponent offers a draw'}</strong>{game.drawOffer !== color && <div><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('respond-draw', { accept: true })}>Accept draw</button><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('respond-draw', { accept: false })}>Decline</button></div>}</div>}
-                {finished && <div className="online-offer">{snapshot.rematch && snapshot.rematch !== color ? <><p>Your opponent requested a rematch.</p><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('accept-rematch')}>Accept rematch</button><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('decline-rematch')}>Decline</button></> : <button disabled={waiting || !connected || !!snapshot.rematch} className="quiet-button" onClick={() => command('rematch')}>{snapshot.rematch ? 'Rematch requested' : 'Request rematch'}</button>}</div>}
+                {finished && <div className="online-offer">{rematchExpired ? <p>Rematch window expired. <Link href={`/${ruleset === 'normal' ? 'classic' : 'havoc'}`}>Find a new opponent</Link></p> : <><p>Rematches are available for 60 seconds after the match ends.</p>{snapshot.rematch && snapshot.rematch !== color ? <><p>Your opponent requested a rematch.</p><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('accept-rematch')}>Accept rematch</button><button disabled={waiting || !connected} className="quiet-button" onClick={() => command('decline-rematch')}>Decline</button></> : <button disabled={waiting || !connected || !!snapshot.rematch} className="quiet-button" onClick={() => command('rematch')}>{snapshot.rematch ? 'Rematch requested' : 'Request rematch'}</button>}</>}</div>}
                 <div className="online-move-heading"><h2>Moves</h2><span>{snapshot.history.length} played</span></div>{snapshot.history.length ? <ol className="online-moves">{Array.from({ length: Math.ceil(snapshot.history.length / 2) }, (_, i) => <li key={i}><span>{i + 1}.</span>{[0, 1].map(side => { const move = snapshot.history[i * 2 + side]; return <span key={side}>{move ? `${square(move.from)} → ${square(move.to)}${move.kind === 'rotate' ? ' (switch)' : 'promotion' in move && move.promotion ? ` = ${move.promotion}` : ''}` : '—'}</span>; })}</li>)}</ol> : <p className="online-empty-moves">The board is ready.<br />{game.turn === color ? 'Make your opening move.' : 'Waiting for the opening move.'}</p>}
                 <p className="online-notice" role="status">{notice}</p><Link className="online-home-link" href="/">Back to play</Link>
             </aside></div></section>;

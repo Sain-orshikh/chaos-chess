@@ -79,6 +79,55 @@ test('draw consent, expiry, resignation and rematch require the correct side and
     s = transition(s, 'black', request(s, 'accept-rematch'), 1_002_400); assert.equal(s.rematch, 'white');
     const resigned = transition(start(), 'white', request(start(), 'resign'), 1_001_000); assert.equal(resigned.outcome.result, 'black');
 });
+test('rematches expire exactly 60 seconds after the recorded outcome, including late-settled timeouts', () => {
+    const ended = transition(start(), 'white', request(start(), 'resign'), 1_001_000);
+    const offered = transition(ended, 'white', request(ended, 'rematch'), 1_060_998);
+    assert.equal(transition(offered, 'black', request(offered, 'accept-rematch'), 1_060_999).rematch, 'white');
+    for (const type of ['rematch', 'accept-rematch', 'decline-rematch']) {
+        assert.throws(() => transition(offered, 'black', request(offered, type), 1_061_000), /rematch window has expired/);
+    }
+    const late = start(); late.clocks.white = 30_000;
+    settle(late, 1_100_000);
+    assert.equal(late.outcome.at, 1_030_000);
+    assert.throws(() => transition(late, 'white', request(late, 'rematch'), 1_100_000), /rematch window has expired/);
+});
+
+test('finished sockets close at the original rematch deadline, release subscriptions, and stay expired on reload', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
+    const db = memory(), bus = infra();
+    const service = createMatchService({ model: db.model, infra: bus });
+    await service.create({ id: ID, white: { _id: A }, black: { _id: B }, ruleset: 'normal', rated: false });
+    const ended = await service.command(ID, A, request(db.docs.get(ID).live, 'resign'));
+    assert.equal(ended.rematchUntil, 1_060_000);
+    const server = http.createServer((_req, res) => res.end());
+    let subscriptions = 0;
+    const adapter = { ...bus, subscribe(...args) { subscriptions++; const unsubscribe = bus.subscribe(...args); return () => { subscriptions--; unsubscribe(); }; } };
+    const wss = attachLiveSockets(server, { runtime: () => ({ service, infra: adapter }), connect: async () => {}, authenticate: async () => ({ userId: A, expires: Date.now() + 1_000_000 }) });
+    server.listen(0, '127.0.0.1'); await once(server, 'listening');
+    const open = () => new WebSocket(`ws://127.0.0.1:${server.address().port}/api/live/${ID}/socket`, { origin: 'http://localhost:3000' });
+    let client, reloaded;
+    try {
+        client = open();
+        const [raw] = await once(client, 'message');
+        assert.equal(JSON.parse(String(raw)).data.rematchUntil, 1_060_000);
+        assert.equal(subscriptions, 1);
+        t.mock.timers.tick(59_999);
+        assert.equal(client.readyState, WebSocket.OPEN);
+        // Receiving another snapshot must not grant another minute.
+        const heartbeat = once(client, 'message');
+        client.send(JSON.stringify({ type: 'heartbeat' }));
+        await heartbeat;
+        const closed = once(client, 'close'), serverClosed = once([...wss.clients][0], 'close');
+        t.mock.timers.tick(1);
+        assert.equal((await closed)[0], 4002);
+        await serverClosed;
+        assert.equal(subscriptions, 0);
+        reloaded = open();
+        const snapshot = once(reloaded, 'message'), expired = once(reloaded, 'close');
+        assert.equal(JSON.parse(String((await snapshot)[0])).data.rematchUntil, 1_060_000);
+        assert.equal((await expired)[0], 4002);
+    } finally { client?.terminate(); reloaded?.terminate(); wss.close(); server.close(); server.closeAllConnections(); }
+});
 test('disconnect before first own move abandons; after first own move loses; timeout takes earlier precedence', () => {
     let s = start(); s = presence(s, 'white', 'white-one', true, 1_000_000); s = presence(s, 'black', 'black-one', true, 1_000_000);
     s = presence(s, 'white', 'white-one', false, 1_000_100); s = presence(s, 'black', 'black-one', true, 1_059_000);

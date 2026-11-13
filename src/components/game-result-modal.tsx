@@ -15,10 +15,10 @@ type Props = {
     onPlayAgain: () => void;
     onViewBoard: () => void;
     ratingSummary?: ReactNode;
-    playAgainLabel?: string; matchLabel?: string;
+    playAgainLabel?: string; playAgainDisabled?: boolean; matchLabel?: string;
 };
 
-export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard, ratingSummary, playAgainLabel = "Play again", matchLabel }: Props) {
+export default function GameResultModal({ status, playerColor, playerName, opponentName = "Player 2", onPlayAgain, onViewBoard, ratingSummary, playAgainLabel = "Play again", playAgainDisabled = false, matchLabel }: Props) {
     const dialog = useRef<HTMLDialogElement>(null);
     const abandoned = status.kind === "draw" && status.reason === "abandoned";
     const draw = status.kind === "stalemate" || status.kind === "draw";
@@ -59,7 +59,7 @@ export default function GameResultModal({ status, playerColor, playerName, oppon
             </div>
         </div>
         <div className="result-actions">
-            <button type="button" autoFocus className="result-play-button" onClick={onPlayAgain}><Icon name="replay" />{playAgainLabel}</button>
+            <button type="button" autoFocus className="result-play-button" disabled={playAgainDisabled} onClick={onPlayAgain}><Icon name="replay" />{playAgainLabel}</button>
             <button type="button" className="result-board-button" onClick={onViewBoard}>View board</button>
         </div>
         {ratingSummary ?? <p className="result-unrated">Unrated · No Elo or match count changes</p>}

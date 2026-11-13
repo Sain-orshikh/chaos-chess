@@ -59,10 +59,23 @@ export function attachLiveSockets(server, { runtime = liveRuntime, connect = con
             const snapshot = await service.connection(id, userId, connection, true);
             if (socket.destroyed) { await service.connection(id, userId, connection, false); return; }
             sockets.handleUpgrade(request, socket, head, ws => {
-                let closed = false, chain = Promise.resolve(), lastSeen = Date.now(), count = 0, windowStart = Date.now(), pingSent = 0, pingToken = '', bestRtt = Infinity;
+                let closed = false, expired = false, rematchTimer, chain = Promise.resolve(), lastSeen = Date.now(), count = 0, windowStart = Date.now(), pingSent = 0, pingToken = '', bestRtt = Infinity;
                 const send = value => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(value)); };
-                const snapshotMessage = value => send({ type: 'snapshot', data: value });
-                const queue = task => { chain = chain.then(async () => { if (!closed) await task(); }).catch(error => {
+                const expireRematch = () => {
+                    expired = true;
+                    clearInterval(interval); clearTimeout(rotation);
+                    ws.close(4002, 'Rematch window expired');
+                };
+                const snapshotMessage = value => {
+                    send({ type: 'snapshot', data: value });
+                    clearTimeout(rematchTimer);
+                    if (value.rematchUntil != null) {
+                        const remaining = value.rematchUntil - Date.now();
+                        if (remaining <= 0) expireRematch();
+                        else { rematchTimer = setTimeout(expireRematch, remaining); rematchTimer.unref(); }
+                    }
+                };
+                const queue = task => { chain = chain.then(async () => { if (!closed && !expired) await task(); }).catch(error => {
                     logger.warn({ err: error, event: 'match_socket_error' }, 'Match connection operation failed');
                     send({ type: 'error', error: error instanceof MatchError ? error.message : 'Connection interrupted. Reconnecting.' });
                     if (!(error instanceof MatchError)) ws.close(1011, 'Service unavailable');
@@ -96,7 +109,7 @@ export function attachLiveSockets(server, { runtime = liveRuntime, connect = con
                 });
                 ws.on('error', () => ws.close());
                 ws.on('close', () => {
-                    closed = true; clearInterval(interval); clearTimeout(rotation); Promise.resolve(unsubscribe()).catch(() => {});
+                    closed = true; clearInterval(interval); clearTimeout(rotation); clearTimeout(rematchTimer); Promise.resolve(unsubscribe()).catch(() => {});
                     // Wait for in-flight commands before dropping only this connection's lease.
                     chain.then(() => service.connection(id, userId, connection, false)).catch(error => logger.warn({ err: error, event: 'match_disconnect_failed' }, 'Lease will expire automatically'));
                 });

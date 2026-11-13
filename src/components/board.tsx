@@ -32,7 +32,7 @@ type Props = {
     onlineGameId?: string;
     playerImage?: string;
     online?: { color: Color; players: Record<Color, { name: string; image?: string; rating?: number; equippedBadges?: string[] }>; controls: ReactNode;
-        onRematch: () => void; rematchLabel: string; live?: boolean; clocks?: Record<Color, string>; ratingSummary?: ReactNode };
+        onRematch: () => void; rematchLabel: string; rematchDisabled?: boolean; live?: boolean; clocks?: Record<Color, string>; ratingSummary?: ReactNode };
 
 };
 
@@ -157,7 +157,7 @@ export default function Board({ orientation = "white", playerName = "Anonymous",
         {!analysis && isGameOver(status) && !resultDismissed && <GameResultModal
             status={status} playerColor={online?.color ?? orientation} playerName={online ? online.players[online.color].name : playerName} opponentName={online ? online.players[online.color === "white" ? "black" : "white"].name : bot ? botName : analysis ? topColor === "white" ? "White" : "Black" : "Player 2"}
             onPlayAgain={online?.onRematch ?? restart}
-            playAgainLabel={online?.rematchLabel} matchLabel={online ? online.live ? "Online match" : "Online match preview" : undefined}
+            playAgainLabel={online?.rematchLabel} playAgainDisabled={online?.rematchDisabled} matchLabel={online ? online.live ? "Online match" : "Online match preview" : undefined}
             onViewBoard={() => { setResultDismissed(true); focusStatus(); }}
             ratingSummary={bot && "winner" in status && status.winner === orientation ? botId === "merlin" ? <MerlinBadgeResult key={gameNumber} /> : botId === "kestrel" ? <KestrelBadgeResult key={gameNumber} /> : <RookeBadgeResult key={gameNumber} /> : online?.live ? online.ratingSummary : online ? <p className="result-unrated">Preview only · Ratings are unchanged</p> : onlineGameId && !bot ? <OnlineGameFinalization key={onlineGameId} gameId={onlineGameId} /> : undefined}
         />}
