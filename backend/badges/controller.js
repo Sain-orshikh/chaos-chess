@@ -62,3 +62,21 @@ export async function equipBadges(req, res) {
         return respond(await updated(req.user._id, { $set: { equippedBadges: ids } }), res);
     } catch (error) { return failure(error, req, res); }
 }
+
+// Same client-reported, unrated policy as Rooke; standalone award only.
+export async function reportKestrelWin(req, res) {
+    try {
+        fields(req.body, []);
+        if (badgeMap(req.user)['kestrel-conqueror']) return respond(req.user, res);
+        return respond(await updated(req.user._id, [{ $set: awardAssignments(['kestrel-conqueror'], new Date()) }]), res);
+    } catch (error) { return failure(error, req, res); }
+}
+
+// Same client-reported, unrated policy as Rooke; standalone award only.
+export async function reportMerlinWin(req, res) {
+    try {
+        fields(req.body, []);
+        if (badgeMap(req.user)['merlin-conqueror']) return respond(req.user, res);
+        return respond(await updated(req.user._id, [{ $set: awardAssignments(['merlin-conqueror'], new Date()) }]), res);
+    } catch (error) { return failure(error, req, res); }
+}

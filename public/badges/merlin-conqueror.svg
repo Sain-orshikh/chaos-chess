@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="192" viewBox="0 0 126 144" role="img" aria-labelledby="badge-title">
+<title id="badge-title">Merlin Conqueror</title>
+<defs><linearGradient id="shield" x2=".8" y2="1"><stop stop-color="#33252d"/><stop offset="1" stop-color="#19171d"/></linearGradient><clipPath id="inside"><polygon points="19,2 107,2 124,20 124,100 104,122 63,141 22,122 2,100 2,20"/></clipPath></defs>
+<polygon points="18,0 108,0 126,19 126,101 105,124 63,144 21,124 0,101 0,19" fill="#b3a8b6"/><polygon points="19,2 107,2 124,20 124,100 104,122 63,141 22,122 2,100 2,20" fill="#211d25"/>
+<polygon points="24,9 102,9 117,25 117,97 98,116 63,133 28,116 9,97 9,25" fill="url(#shield)"/>
+<g clip-path="url(#inside)"><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(-90 63 65)" opacity=".38"/><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(-60 63 65)" opacity=".38"/><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(-30 63 65)" opacity=".38"/><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(0 63 65)" opacity=".38"/><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(30 63 65)" opacity=".38"/><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(60 63 65)" opacity=".38"/><rect x="61" y="18" width="2" height="16" fill="#e52c45" transform="rotate(90 63 65)" opacity=".38"/><svg x="35" y="22" width="56" height="80" viewBox="50 30 560 840" preserveAspectRatio="xMidYMid meet">
+  <path fill="#df2634" d="M307 35H353V80H398V122H353V168H307V122H262V80H307Z"/>
+  <path fill="#df2634" fill-rule="evenodd" d="M150 555C121 512 135 465 175 419L211 376L165 326L100 205L229 276L330 180L431 276L560 205L495 326L449 376L485 419L510 440ZM366 314L395 337L320 435L291 412Z"/>
+  <path fill="#e7e6e2" fill-rule="evenodd" d="M527 476C535 522 504 557 462 583L490 775H570V870H90V775H170L145 594ZM387 682A57 57 0 1 1 273 682A57 57 0 0 1 387 682ZM357 682A27 27 0 1 0 303 682A27 27 0 0 0 357 682Z"/>
+</svg><g transform="translate(50.00 114) scale(0.65)" fill="none" stroke="#e7e6e2" stroke-width="2.1" stroke-linecap="square" stroke-linejoin="miter"><path d="M3 2H9M6 2V16M3 16H9M17 2H23M20 2V16M17 16H23M31 2H37M34 2V16M31 16H37"/></g></g><rect x="53" y="8" width="20" height="3" fill="#e52c45" />
+</svg>

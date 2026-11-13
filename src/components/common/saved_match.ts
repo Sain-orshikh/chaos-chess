@@ -4,7 +4,7 @@ import type { Color, Ruleset, StandardState } from "../utils/types";
 
 export const MATCH_SAVE_MS = 3 * 60 * 60 * 1000;
 export const matchStorageKey = (local: boolean) => `chaos-chess:match:${local ? "local" : "bot"}:v1`;
-export type SavedMatch = { game: GameState; orientation: Color; evaluationSeed: number; expiresAt: number };
+export type SavedMatch = { botId?: "rooke" | "kestrel" | "merlin"; game: GameState; orientation: Color; evaluationSeed: number; expiresAt: number };
 const color = (value: unknown): value is Color => value === "white" || value === "black";
 const square = (value: unknown): value is number => Number.isInteger(value) && Number(value) >= 0 && Number(value) < 64;
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -12,7 +12,7 @@ const record = (value: unknown): value is Record<string, unknown> => typeof valu
 /** Store the real position before a pending promotion, then reconstruct its legal preview. */
 export function encodeMatch(match: SavedMatch): string {
     const { game } = match;
-    return JSON.stringify({ version: 1, orientation: match.orientation, evaluationSeed: match.evaluationSeed, expiresAt: match.expiresAt,
+    return JSON.stringify({ version: 1, botId: match.botId, orientation: match.orientation, evaluationSeed: match.evaluationSeed, expiresAt: match.expiresAt,
         board: game.pendingPromotion?.boardBefore ?? game.board, ruleset: game.ruleset, turn: game.turn,
         castling: game.castling, standard: game.standard, halfmoveClock: game.halfmoveClock,
         drawOffer: game.drawOffer, lastMove: game.lastMove,
@@ -34,6 +34,7 @@ export function decodeMatch(raw: string | null, now = Date.now()): SavedMatch | 
             || (value.ruleset !== "normal" && value.ruleset !== "chaos")
             || !record(value.castling) || typeof value.castling.white !== "boolean" || typeof value.castling.black !== "boolean"
             || (value.drawOffer !== null && !color(value.drawOffer))) return null;
+        if (value.botId === "merlin" && value.ruleset !== "normal") return null;
         let standard: StandardState | undefined;
         if (value.ruleset === "normal") {
             const state = value.standard;
@@ -54,6 +55,6 @@ export function decodeMatch(raw: string | null, now = Date.now()): SavedMatch | 
             game = gameReducer(game, { type: "click", square: [Math.floor(value.promotion.to / 8), value.promotion.to % 8] });
             if (!game.pendingPromotion) return null;
         }
-        return { game, orientation: value.orientation, evaluationSeed: Number(value.evaluationSeed), expiresAt: Number(value.expiresAt) };
+        return { botId: value.botId === "merlin" ? "merlin" : value.botId === "kestrel" ? "kestrel" : "rooke", game, orientation: value.orientation, evaluationSeed: Number(value.evaluationSeed), expiresAt: Number(value.expiresAt) };
     } catch { return null; }
 }

@@ -1,6 +1,6 @@
 // Public metadata lives in /public/badges/manifest.json. Unlock rules stay server-side.
 export const BADGE_IDS = Object.freeze([
-    'first-blood', 'rooke-awakening', 'on-the-rise', 'four-figures',
+    'first-blood', 'rooke-awakening', 'kestrel-conqueror', 'merlin-conqueror', 'on-the-rise', 'four-figures',
     'getting-dangerous', 'centurion', 'by-the-book', 'chaos-theory',
     'hat-trick', 'three-musketiers', 'the-hundred', 'podium', 'heir-apparent', 'sovereign',
 ]);

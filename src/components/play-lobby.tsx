@@ -13,10 +13,10 @@ import Icon from "./icon";
 import NavIcon from "./nav-icon";
 import { useAuth } from "./auth-provider";
 import type { Color, Ruleset } from "./utils/types";
-import { portfolioUrl } from "@/lib/site";
 
 export default function PlayLobby({ local = false }: { local?: boolean }) {
   const { user } = useAuth();
+  const [botId, setBotId] = useState<"rooke" | "kestrel" | "merlin">("rooke");
   const [ruleset, setRuleset] = useState<Ruleset>("chaos");
   const [side, setSide] = useState<Color | "random">("white");
   const [match, setMatch] = useState<SavedMatch | null>(null);
@@ -56,7 +56,7 @@ export default function PlayLobby({ local = false }: { local?: boolean }) {
     if (changed) store(next);
   }, [store]);
   function startMatch() {
-    const next: SavedMatch = { orientation: side === "random" ? Math.random() < .5 ? "white" : "black" : side,
+    const next: SavedMatch = { botId, orientation: side === "random" ? Math.random() < .5 ? "white" : "black" : side,
       game: createGame(parseFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"), "white", undefined, ruleset),
       evaluationSeed: 1 + Math.floor(Math.random() * 0xffffffff), expiresAt: Date.now() + MATCH_SAVE_MS };
     matchRef.current = next; setMatch(next); setSaved(null); store(next); window.scrollTo(0, 0);
@@ -68,17 +68,17 @@ export default function PlayLobby({ local = false }: { local?: boolean }) {
   }
   function setup() { matchRef.current = null; setMatch(null); setSaved(readSaved()); window.scrollTo(0, 0); }
   return <section>
-    <div className="page-heading"><h1>{local ? "Local 1v1" : "Play Rooke"}</h1><div className="page-actions">{!match && <Link className="quiet-button" href="/encyclopedia"><Icon name="book" />Piece rules</Link>}</div></div>
-    {!local && !match && <p className="project-intro">Havoc Chess is a chess variant by <a href={portfolioUrl} rel="author">Sainorshikh</a>. New moves, a fresh challenge. <Link href="/about">The story behind the game <span aria-hidden="true">↗</span></Link></p>}
-    {match ? <div className={`match-screen${local ? "" : " bot-match-screen"}`}><Board ruleset={match.game.ruleset} game={match.game} onAction={onAction} evaluationSeed={match.evaluationSeed} orientation={match.orientation} playerName={user?.displayName || user?.username || "Anonymous"} playerImage={user?.profileImg} bot={!local} onSetup={setup} /><p className="match-note">{match.game.ruleset === "chaos" ? "Havoc Chess" : "Classic Chess"} · Unrated · No Elo or match count changes</p></div> : <div className="match-setup">
-      <div className="match-opponent">{local ? <NavIcon name="local" /> : <Image src="/brand-rooke.svg" width={44} height={60} alt="" className="rooke-logo" />}<div><h2>{local ? "Two players, one board" : <>Rooke <span className="bot-rating" title="Provisional Classic chess rating">(1650)</span></>}</h2><p>{local ? "Take turns on this device." : "Play against our current engine."}</p></div></div>
+    <div className="page-heading"><h1>{local ? "Local 1v1" : "Play a bot"}</h1><div className="page-actions">{!match && <Link className="quiet-button" href="/encyclopedia"><Icon name="book" />Piece rules</Link>}</div></div>
+    {match ? <div className={`match-screen${local ? "" : " bot-match-screen"}`}><Board ruleset={match.game.ruleset} game={match.game} onAction={onAction} evaluationSeed={match.evaluationSeed} orientation={match.orientation} playerName={user?.displayName || user?.username || "Anonymous"} playerImage={user?.profileImg} bot={!local} botId={match.botId} onSetup={setup} /><p className="match-note">{match.game.ruleset === "chaos" ? "Havoc Chess" : "Classic Chess"} · Unrated · No Elo or match count changes</p></div> : <div className="match-setup">
+      <div className="match-opponent">{local ? <NavIcon name="local" /> : <Image src={botId === "merlin" ? "/brand-merlin.svg" : botId === "kestrel" ? "/brand-kestrel.svg" : "/brand-rooke.svg"} width={44} height={60} alt="" className="rooke-logo" />}<div><h2>{local ? "Two players, one board" : botId === "merlin" ? <>Merlin <span className="bot-rating" title="Approximate Classic Elo">(2250)</span></> : botId === "kestrel" ? <>Kestrel <span className="bot-rating" title="Approximate Classic Elo">(1850)</span></> : <>Rooke <span className="bot-rating" title="Approximate Classic Elo">(1450)</span></>}</h2><p>{local ? "Take turns on this device." : botId === "merlin" ? "Our newest Classic challenger." : botId === "kestrel" ? "A swift new challenger." : "Play against our original engine."}</p></div></div>
       {saved && <div className="resume-match"><div><strong>Continue your {local ? "local" : "bot"} match</strong><p>{saved.game.ruleset === "chaos" ? "Havoc Chess" : "Classic Chess"} · Saved for 3 hours after your last move</p></div><button className="quiet-button" onClick={resumeMatch}>Resume match<Icon name="play" /></button></div>}
+      {!local && <><h2>Choose your opponent</h2><div className="color-options">{(ruleset === "normal" ? ["rooke", "kestrel", "merlin"] as const : ["rooke", "kestrel"] as const).map(id => <button key={id} className={botId === id ? "selected" : ""} aria-pressed={botId === id} onClick={() => setBotId(id)}>{id === "rooke" ? "Rooke" : id === "kestrel" ? "Kestrel" : "Merlin"}</button>)}</div></>}
       <h2>Choose your rules</h2>
-      <div className="color-options">{(["chaos", "normal"] as const).map(value => <button key={value} className={ruleset === value ? "selected" : ""} aria-pressed={ruleset === value} onClick={() => setRuleset(value)}>{value === "chaos" ? "Havoc Chess" : "Classic Chess"}</button>)}</div>
-      <p>{ruleset === "chaos" ? "Our variant pieces and once-per-side castling." : "Standard piece movement, castling rights, and en passant."}</p>
+      <div className="color-options">{(["chaos", "normal"] as const).map(value => <button key={value} className={ruleset === value ? "selected" : ""} aria-pressed={ruleset === value} onClick={() => { setRuleset(value); if (value === "chaos" && botId === "merlin") setBotId("kestrel"); }}>{value === "chaos" ? "Havoc Chess" : "Classic Chess"}</button>)}</div>
+      <p>{ruleset === "chaos" ? (local ? "Our variant pieces and once-per-side castling." : "Our variant pieces and once-per-side castling. Merlin is available in Classic chess.") : "Standard piece movement, castling rights, and en passant."}</p>
       <h2>{local ? "Choose the board orientation" : "Choose your side"}</h2>
       <div className="color-options">{(["white", "random", "black"] as const).map(color => <button key={color} className={side === color ? "selected" : ""} aria-pressed={side === color} onClick={() => setSide(color)}><i className={`color-dot ${color}`} />{color[0].toUpperCase() + color.slice(1)}</button>)}</div>
-      <div className="setup-bottom"><p><Icon name="shield" />{user ? "Unrated · No Elo or match count changes" : "Anonymous play · No Elo or match count changes"}</p><button className="primary-button" onClick={startMatch}>{saved ? "Start new match" : local ? "Start local match" : "Play Rooke"}<Icon name="play" /></button></div>
+      <div className="setup-bottom"><p><Icon name="shield" />{user ? "Unrated · No Elo or match count changes" : "Anonymous play · No Elo or match count changes"}</p><button className="primary-button" onClick={startMatch}>{saved ? "Start new match" : local ? "Start local match" : botId === "merlin" ? "Play Merlin" : botId === "kestrel" ? "Play Kestrel" : "Play Rooke"}<Icon name="play" /></button></div>
     </div>}
     {saveError && <p className="form-error" role="status">{saveError}</p>}
   </section>;

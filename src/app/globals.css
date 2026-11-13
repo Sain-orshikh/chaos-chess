@@ -132,10 +132,13 @@ h1, h2, h3 {
   width: var(--sidebar-width);
   padding: 24px 22px;
   overflow-y: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   background: var(--panel);
   border-right: 1px solid var(--line);
   transition: transform .22s;
+}
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 .brand {
   display: flex;
@@ -350,6 +353,9 @@ h1, h2, h3 {
   display: none;
 }
 .app-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
   margin-left: var(--sidebar-width);
   transition: margin .22s;
 }
@@ -399,12 +405,12 @@ h1, h2, h3 {
   font-weight: 500;
   color: var(--text-strong);
 }
-.note-trigger { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; color: var(--muted); font-size: 12px; }
-.note-trigger svg { width: 16px; height: 16px; }
-.note-trigger:hover { color: var(--text-strong); background: var(--surface); }
-.project-intro { max-width: 680px; margin: -8px 0 25px; color: var(--muted); font-size: 14px; line-height: 1.7; }
-.project-intro a, .developer-note-copy a, .note-footer a { color: var(--text-strong); text-decoration: underline; text-decoration-color: var(--red-border); text-underline-offset: 4px; }
-.project-intro a:hover, .developer-note-copy a:hover, .note-footer a:hover { color: var(--red-text); }
+.encyclopedia-intro { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.site-footer { color: var(--muted); font-size: 13px; line-height: 1.7; }
+.site-footer p { margin: 0; padding-top: 20px; border-top: 1px solid var(--line); }
+.app-main:has(.match-screen) > .site-footer { display: none; }
+.site-footer a, .developer-note-copy a, .note-footer a { color: var(--text-strong); text-decoration: underline; text-decoration-color: var(--red-border); text-underline-offset: 4px; }
+.site-footer a:hover, .developer-note-copy a:hover, .note-footer a:hover { color: var(--red-text); }
 body:has(.developer-note-dialog[open]) { overflow: hidden; }
 .developer-note-dialog { position: fixed; inset: 0; margin: auto; width: min(700px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; background: var(--panel); color: var(--foreground); border: 1px solid var(--border); border-top: 3px solid var(--red); border-radius: 7px; padding: 32px 38px; box-shadow: 0 24px 100px #000b; }
 .developer-note-dialog::backdrop { background: #000c; backdrop-filter: blur(4px); }
@@ -421,8 +427,6 @@ body:has(.developer-note-dialog[open]) { overflow: hidden; }
 .developer-note-page { width: 100%; max-width: 720px; margin: 16px auto; padding: 32px 38px; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--red); border-radius: 7px; }
 .developer-note-page h1 { font-size: 40px; margin: 0 0 10px; }
 @media (max-width: 600px) {
-  .note-trigger { padding: 8px; }
-  .note-trigger span { display: none; }
   .developer-note-dialog { max-height: calc(100dvh - 24px); padding: 22px; }
   .developer-note-page { padding: 24px 20px; margin: 0; }
   .developer-note-copy { font-size: 14px; }
@@ -431,6 +435,16 @@ body:has(.developer-note-dialog[open]) { overflow: hidden; }
   max-width: 1450px;
   margin: auto;
   padding: 16px 36px 36px;
+}
+.app-main > .page-content {
+  width: 100%;
+  flex: 1;
+}
+.app-main > .site-footer {
+  flex: none;
+}
+.topbar {
+  flex-shrink: 0;
 }
 .page-heading {
   display: flex;

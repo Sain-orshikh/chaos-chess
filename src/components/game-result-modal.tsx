@@ -39,7 +39,7 @@ export default function GameResultModal({ status, playerColor, playerName, oppon
         aria-labelledby="game-result-title" aria-describedby="game-result-reason"
         onCancel={onViewBoard}
         onClick={event => { if (event.target === event.currentTarget) onViewBoard(); }}>
-        <div className="result-topline"><span>{matchLabel ?? (opponentName === "Rooke" ? "vs Rooke" : "Local 1v1")}</span><button type="button" className="icon-button" aria-label="Close game result" onClick={onViewBoard}><Icon name="close" /></button></div>
+        <div className="result-topline"><span>{matchLabel ?? ((opponentName === "Rooke" || opponentName === "Kestrel" || opponentName === "Merlin") ? `vs ${opponentName}` : "Local 1v1")}</span><button type="button" className="icon-button" aria-label="Close game result" onClick={onViewBoard}><Icon name="close" /></button></div>
         <div className={`result-emblem${draw ? " paired" : ""}`} aria-hidden="true">
             {Piece("king", winnerColor)}
             {draw && Piece("king", opponentColor)}

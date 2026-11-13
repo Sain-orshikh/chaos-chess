@@ -24,7 +24,7 @@ export default function Encyclopedia() {
   const [replay, setReplay] = useState(0);
   const piece = pieces[active];
   return <section>
-    <div className="page-heading"><h1>Encyclopedia</h1></div>
+    <div className="page-heading"><div><h1>Encyclopedia - havoc</h1><p className="encyclopedia-intro">Learn how every Havoc Chess piece moves with animated examples.</p></div></div>
     <div className="piece-tabs" aria-label="Choose a piece">{(Object.keys(pieces) as PieceKey[]).map(name => <button key={name} aria-pressed={active === name} className={active === name ? "active" : ""} onClick={() => setActive(name)}><Image src={`/pieces/white-${name}.svg`} width={26} height={26} alt="" />{name[0].toUpperCase() + name.slice(1)}</button>)}</div>
     <div className="encyclopedia-grid">
       <div className="demo-stage">

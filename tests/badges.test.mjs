@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import User from '../backend/models/user.model.js';
 import { BADGE_IDS, badgeMap, grantMilestones, recordBadgeResult, leaderboardAwards, equippedBadges } from '../backend/badges/rules.js';
-import { reportRookeWin, equipBadges, syncBadges } from '../backend/badges/controller.js';
+import { reportRookeWin, reportKestrelWin, reportMerlinWin, equipBadges, syncBadges } from '../backend/badges/controller.js';
 import { publicUser } from '../backend/controllers/auth.controller.js';
 import { createMongoLeaderboardStore, publicEntries } from '../backend/leaderboard/service.js';
 
@@ -14,7 +14,7 @@ const now = new Date('2026-11-09T00:00:00Z');
 const player = (extras = {}) => new User({ _id: A, username: 'Alice', password: 'password', ...extras });
 const response = () => ({ statusCode: 200, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } });
 
-test('catalog and server agree on exactly 14 IDs; secret description stays absent', async () => {
+test('catalog and server agree on exactly 16 IDs; secret description stays absent', async () => {
     const catalog = JSON.parse(await readFile(new URL('../public/badges/manifest.json', import.meta.url)));
     assert.deepEqual(catalog.badges.map(badge => badge.id), [...BADGE_IDS]);
     assert.equal(catalog.badges.find(badge => badge.secret).description, null);
@@ -188,4 +188,50 @@ test('reopening an older match merges awards without rolling back current stats 
     assert.deepEqual(merged.equippedBadges, ['centurion']);
     assert.ok(merged.badges['on-the-rise']); assert.ok(merged.badges.centurion);
     assert.equal(mergeAchievements(user, { ...old, userId: 'another account' }), user);
+});
+
+test('Kestrel badge is standalone, idempotent, and leaves Rooke and multiplayer progression untouched', async () => {
+    const original = User.findOneAndUpdate;
+    let calls = 0;
+    const user = player({ badgeProgress: { classicWins: 1, chaosWins: 1 } });
+    User.findOneAndUpdate = (_filter, update) => {
+        calls++;
+        assert.deepEqual(Object.keys(update[0].$set), ['badges.kestrel-conqueror']);
+        user.badges.set('kestrel-conqueror', now);
+        return { select: async () => user };
+    };
+    try {
+        await reportKestrelWin({ user, body: {} }, response());
+        await reportKestrelWin({ user, body: {} }, response());
+        assert.equal(calls, 1);
+        assert.equal(badgeMap(user)['rooke-awakening'], undefined);
+        assert.equal(badgeMap(user)['three-musketiers'], undefined);
+        assert.deepEqual(grantMilestones(user, now), []);
+        const invalid = response();
+        await reportKestrelWin({ user, body: { wins: 99 } }, invalid);
+        assert.equal(invalid.statusCode, 400);
+    } finally { User.findOneAndUpdate = original; }
+});
+
+test('Merlin badge is standalone, idempotent, and leaves Rooke and multiplayer progression untouched', async () => {
+    const original = User.findOneAndUpdate;
+    let calls = 0;
+    const user = player({ badgeProgress: { classicWins: 1, chaosWins: 1 } });
+    User.findOneAndUpdate = (_filter, update) => {
+        calls++;
+        assert.deepEqual(Object.keys(update[0].$set), ['badges.merlin-conqueror']);
+        user.badges.set('merlin-conqueror', now);
+        return { select: async () => user };
+    };
+    try {
+        await reportMerlinWin({ user, body: {} }, response());
+        await reportMerlinWin({ user, body: {} }, response());
+        assert.equal(calls, 1);
+        assert.equal(badgeMap(user)['rooke-awakening'], undefined);
+        assert.equal(badgeMap(user)['three-musketiers'], undefined);
+        assert.deepEqual(grantMilestones(user, now), []);
+        const invalid = response();
+        await reportMerlinWin({ user, body: { wins: 99 } }, invalid);
+        assert.equal(invalid.statusCode, 400);
+    } finally { User.findOneAndUpdate = original; }
 });

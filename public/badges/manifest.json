@@ -18,6 +18,22 @@
       "artwork": "/badges/rooke-awakening.svg"
     },
     {
+      "id": "kestrel-conqueror",
+      "name": "Kestrel Conqueror",
+      "description": "Beat Kestrel in Classic or Havoc at default settings.",
+      "category": "Milestones",
+      "secret": false,
+      "artwork": "/badges/kestrel-conqueror.svg"
+    },
+    {
+      "id": "merlin-conqueror",
+      "name": "Merlin Conqueror",
+      "description": "Beat Merlin in Classic at default settings.",
+      "category": "Milestones",
+      "secret": false,
+      "artwork": "/badges/merlin-conqueror.svg"
+    },
+    {
       "id": "on-the-rise",
       "name": "On the Rise",
       "description": "Reach 600 Elo.",

@@ -3,7 +3,7 @@ import { protectRoute } from "../middleware/protectRoute.js";
 import { getUserProfile, updateUser } from "../controllers/user.controller.js";
 
 import { rateLimit } from "../security/rateLimit.js";
-import { equipBadges, reportRookeWin, syncBadges } from '../badges/controller.js';
+import { equipBadges, reportMerlinWin, reportKestrelWin, reportRookeWin, syncBadges } from '../badges/controller.js';
 
 const router = express.Router();
 const updateLimit = rateLimit({ limit: 10, windowMs: 15 * 60 * 1000, namespace: "profile-update", key: (req) => String(req.user._id) });
@@ -14,5 +14,9 @@ router.post("/update",protectRoute,updateLimit,updateUser);
 router.post('/badges/sync', protectRoute, updateLimit, syncBadges);
 router.post('/badges/equip', protectRoute, updateLimit, equipBadges);
 router.post('/badges/rooke-win', protectRoute, updateLimit, reportRookeWin);
+
+router.post('/badges/kestrel-win', protectRoute, updateLimit, reportKestrelWin);
+
+router.post('/badges/merlin-win', protectRoute, updateLimit, reportMerlinWin);
 
 export default router;

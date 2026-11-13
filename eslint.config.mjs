@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Compiler-generated Emscripten loader; maintain engine/kestrel instead.
+    "public/engines/kestrel.js",
+    "public/engines/merlin.js",
   ]),
 ]);
 

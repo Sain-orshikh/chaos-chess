@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="60" viewBox="0 0 660 900" role="img" aria-labelledby="merlin-title merlin-description">
+  <title id="merlin-title">Merlin</title>
+  <desc id="merlin-description">A red and silver chess piece combining a king's cross, a queen's crown, and a bishop's diagonal mitre cut, above the shared circular pedestal detail.</desc>
+  <path fill="#df2634" d="M307 35H353V80H398V122H353V168H307V122H262V80H307Z"/>
+  <path fill="#df2634" fill-rule="evenodd" d="M150 555C121 512 135 465 175 419L211 376L165 326L100 205L229 276L330 180L431 276L560 205L495 326L449 376L485 419L510 440ZM366 314L395 337L320 435L291 412Z"/>
+  <path fill="#e7e6e2" fill-rule="evenodd" d="M527 476C535 522 504 557 462 583L490 775H570V870H90V775H170L145 594ZM387 682A57 57 0 1 1 273 682A57 57 0 0 1 387 682ZM357 682A27 27 0 1 0 303 682A27 27 0 0 0 357 682Z"/>
+</svg>

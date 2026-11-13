@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="60" viewBox="0 0 660 900" role="img" aria-labelledby="kestrel-title kestrel-description">
+  <title id="kestrel-title">Kestrel</title>
+  <desc id="kestrel-description">A red and silver sea serpent inspired by a carved wooden chess piece, with a broad angled head, a black eye, heavy jaw, and plated neck.</desc>
+  <path fill="#df2634" fill-rule="evenodd" d="M140 560C132 450 177 341 195 275L156 256L125 165L150 95L235 110L275 80L330 100L385 80L445 100L500 90L550 125L565 230L455 250L415 275L485 275L550 250L560 290L520 325L430 337L416 374L455 388L445 420ZM421 159L459 188L418 201ZM521 140L539 159L517 166ZM377 219L400 245L385 302L354 321L363 266Z"/>
+  <path fill="#000000" d="M323 183A21 21 0 1 1 281 183A21 21 0 0 1 323 183Z"/>
+  <path fill="#e7e6e2" fill-rule="evenodd" d="M455 455L445 480L490 500L480 540L520 560L510 600L550 620L540 660L575 685L555 775H600V870H80V775H150L130 594ZM365 682A45 45 0 1 1 275 682A45 45 0 0 1 365 682ZM342 682A22 22 0 1 0 298 682A22 22 0 0 0 342 682ZM405 529L477 511L471 533L415 550ZM431 589L507 570L501 592L442 610ZM458 649L537 630L531 652L469 670Z"/>
+</svg>
