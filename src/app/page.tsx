@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import PlayLobby from "@/components/play-lobby";
 import { pageMetadata, portfolioUrl, siteDescription, siteUrl } from "@/lib/site";
 
@@ -12,6 +13,12 @@ const structuredData = {
   ],
 };
 
-export default function Home() {
-  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} /><PlayLobby /></>;
+async function TestLobby({ searchParams }: { searchParams: Promise<{ test?: string | string[] }> }) {
+  const { test } = await searchParams;
+  const testMode = typeof test === "string" && test.toLowerCase() === "true";
+  return <PlayLobby testMode={testMode} />;
+}
+
+export default function Home({ searchParams }: { searchParams: Promise<{ test?: string | string[] }> }) {
+  return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} /><Suspense fallback={<PlayLobby />}><TestLobby searchParams={searchParams} /></Suspense></>;
 }

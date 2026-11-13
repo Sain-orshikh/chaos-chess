@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BotStats, { type BotTelemetry, type NativeBotResult, nativeTelemetry } from "./bot-stats";
 import type { BasicMove, Board, Color, CastlingState, StandardState } from "./utils/types";
 
-type MerlinMessage = { type: "result"; result: { move: BasicMove | null } } | { type: "error"; message: string };
+type MerlinMessage = { type: "result"; result: NativeBotResult } | { type: "error"; message: string };
 
 type Props = {
-    evaluationSeed?: number; board: Board; halfmoveClock: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
+    testMode?: boolean; evaluationSeed?: number; board: Board; halfmoveClock: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
     onMove: (move: BasicMove, board: Board, turn: Color) => void;
 };
 
-export default function MerlinPanel({ board, halfmoveClock, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
+export default function MerlinPanel({ testMode = false, board, halfmoveClock, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
     // Stable for every turn/depth in this game; a restart remounts this panel with a new seed.
     const [randomSeed] = useState(() => 1 + Math.floor(Math.random() * 0xffffffff));
     const evaluationSeed = savedSeed ?? randomSeed;
+    const [measurement, setMeasurement] = useState<{ board: Board; data: BotTelemetry } | null>(null);
     const [failure, setFailure] = useState<{ board: Board; message: string } | null>(null);
     const [retry, setRetry] = useState(0);
     const error = failure?.board === board ? failure.message : "";
@@ -30,6 +32,7 @@ export default function MerlinPanel({ board, halfmoveClock, castling, standard, 
                 const message = event.data;
                 if (message.type === "error") { fail(message.message); current.terminate(); }
                 if (message.type === "result") {
+                    if (testMode) setMeasurement({ board, data: nativeTelemetry(message.result) });
                     current.terminate();
                     if (message.result.move) onMove(message.result.move, board, turn);
                     else fail("No move was returned. Restart the game or retry the search.");
@@ -41,7 +44,6 @@ export default function MerlinPanel({ board, halfmoveClock, castling, standard, 
             queueMicrotask(() => fail("The background search could not start. Try again."));
         }
         return () => { cancelled = true; worker?.terminate(); };
-    }, [active, board, halfmoveClock, castling, standard, turn, retry, onMove, evaluationSeed]);
-    if (!error) return null;
-    return <div className="bot-error" role="alert"><p>{error}</p><button type="button" className="quiet-button" onClick={() => { setFailure(null); setRetry(value => value + 1); }}>Retry bot move</button></div>;
+    }, [active, board, halfmoveClock, castling, standard, turn, retry, onMove, evaluationSeed, testMode]);
+    return <>{testMode && <BotStats data={active && measurement?.board !== board ? null : measurement?.data ?? null} active={active} live={false} />}{error && <div className="bot-error" role="alert"><p>{error}</p><button type="button" className="quiet-button" onClick={() => { setFailure(null); setRetry(value => value + 1); }}>Retry bot move</button></div>}</>;
 }

@@ -90,7 +90,6 @@ export default function Sidebar({ mobileOpen, collapsed, onClose, onDeveloperNot
       <p className="nav-label section-gap">Explore</p>
       <nav className="nav" aria-label="Explore">
         <Link href="/encyclopedia" className={pathname === "/encyclopedia" ? "active" : ""} aria-current={pathname === "/encyclopedia" ? "page" : undefined} onClick={onClose}><NavIcon name="book" />Encyclopedia</Link>
-        <Link href="/engine-lab" className={pathname === "/engine-lab" ? "active" : ""} aria-current={pathname === "/engine-lab" ? "page" : undefined} onClick={onClose}><NavIcon name="lab" />Engine lab</Link>
         <Link href="/leaderboard" className={pathname === "/leaderboard" ? "active" : ""} aria-current={pathname === "/leaderboard" ? "page" : undefined} onClick={onClose}><NavIcon name="trophy" />Leaderboard</Link>
         <button type="button" aria-haspopup="dialog" onClick={onDeveloperNote}><NavIcon name="book" />Developer’s note</button>
       </nav>
