@@ -627,7 +627,7 @@ function getGameStatus(board, turn, castling = createCastlingState(), standard, 
 function createGame(board, turn = "white", castling = createCastlingState(), ruleset = "chaos", standardState = createStandardState(), halfmoveClock = 0) {
   const flags = { ...castling };
   const standard = ruleset === "normal" ? cloneStandardState(standardState) : void 0;
-  return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, drawOffer: null, pendingPromotion: null };
+  return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, capturedPieces: [], status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, plyCount: 0, drawOffer: null, pendingPromotion: null };
 }
 function gameReducer(state, action) {
   if (action.type === "restart") return createGame(action.board, "white", createCastlingState(), state.ruleset);
@@ -708,6 +708,7 @@ function completeMove(state, move) {
   const standard = state.standard ? cloneStandardState(state.standard) : void 0;
   const halfmoveClock = nextHalfmoveClock(state.board, move, state.halfmoveClock);
   const board = applyMove(state.board, move, castling, standard);
+  const captured = state.board.filter((piece, square) => pieceColor(piece) === (state.turn === "white" ? "black" : "white") && board[square] !== piece);
   const turn = state.turn === "white" ? "black" : "white";
   return {
     board,
@@ -717,8 +718,10 @@ function completeMove(state, move) {
     turn,
     selectedSquare: null,
     lastMove: move,
+    capturedPieces: [...state.capturedPieces ?? [], ...captured],
     status: getGameStatus(board, turn, castling, standard, halfmoveClock),
     halfmoveClock,
+    plyCount: state.plyCount + 1,
     drawOffer: state.drawOffer === turn ? null : state.drawOffer,
     pendingPromotion: null
   };

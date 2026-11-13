@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import type { Dispatch, ReactNode } from "react";
 import Piece, { BoardPiece } from "./piece";
 import { pieceColor, pieceDefinition, pieceDefinitions } from "./utils/pieces";
+import MaterialIndicator from "./material-indicator";
+import { materialBalance } from "./common/material";
 import GameResultModal from "./game-result-modal";
 import OnlineGameFinalization from "./online-game-finalization";
 import GameActions from "./game-actions";
@@ -95,12 +97,14 @@ export default function Board({ testMode = false, orientation = "white", playerN
         dispatch({ type: "restart", board: parseFen(STARTING_FEN) });
         focusStatus();
     }
+    const material = materialBalance(board, ruleset);
     const shownMove = highlightedMove ?? lastMove;
     const ActiveBotPanel = botId === "merlin" ? MerlinPanel : botId === "kestrel" ? KestrelPanel : BotPanel;
-    return <div><div className="game-board" onKeyDown={event => {
+    return <div className={bot && testMode ? "bot-test-layout" : undefined}><div className="game-board" onKeyDown={event => {
         if (event.key === "Escape" && selectedSquare) { event.stopPropagation(); dispatch({ type: "click", square: selectedSquare }); setMovingRook(null); }
     }}>
         <div className="board-player">{online ? <PlayerAvatar name={online.players[topColor].name} src={online.players[topColor].image} /> : bot ? <Image src={botId === "merlin" ? "/brand-merlin.svg" : botId === "kestrel" ? "/brand-kestrel.svg" : "/brand-rooke.svg"} width={24} height={32} alt="" className="rooke-avatar" /> : <PlayerAvatar name="Player 2" />}<strong>{online ? online.players[topColor].name : bot ? <>{botName} <span className="bot-rating" title="Approximate Classic Elo">({botId === "merlin" ? 2250 : botId === "kestrel" ? 1850 : 1450})</span></> : analysis ? topColor === "white" ? "White" : "Black" : "Player 2"}{online && <small className="player-rating">{online.players[topColor].rating}</small>}</strong><span>{topColor === "black" ? "Black" : "White"} pieces</span>{online && <BadgeStrip ids={online.players[topColor].equippedBadges} />}{online && <time className={`player-clock${turn === topColor && !gameOver ? " active" : ""}`} aria-label={`${topColor} clock`}>{online.clocks?.[topColor] ?? "5:00"}</time>}</div>
+        <MaterialIndicator capturedPieces={game.capturedPieces} balance={material} color={topColor} ruleset={ruleset} />
         <div className="board-status"><p ref={statusLabel} tabIndex={-1} role="status" aria-live="polite"><i className={`turn-dot ${turn}`} />{statusText}</p><span>{online ? online.live ? "Online match" : "Online match preview" : analysis ? "Analysis board" : bot ? `vs ${botName}` : "Local 1v1"}</span></div>
         <div className="board-frame"><div className="chess-grid" aria-label={ruleset === "chaos" ? "Havoc Chess board" : "Classic Chess board"} inert={pendingPromotion !== null}>
             {Array.from({ length: 64 }, (_, index) => {
@@ -144,6 +148,7 @@ export default function Board({ testMode = false, orientation = "white", playerN
         </div>}
         </div>
         <div className="board-player bottom"><PlayerAvatar name={online ? online.players[orientation].name : playerName} src={online ? online.players[orientation].image : playerImage} /><strong>{online ? online.players[orientation].name : analysis ? orientation === "white" ? "White" : "Black" : playerName}{online && <small className="player-rating">{online.players[orientation].rating}</small>}</strong><span>{orientation === "white" ? "White" : "Black"} pieces</span>{online && <BadgeStrip ids={online.players[orientation].equippedBadges} />}{online && <time className={`player-clock${turn === orientation && !gameOver ? " active" : ""}`} aria-label={`${orientation} clock`}>{online.clocks?.[orientation] ?? "5:00"}</time>}</div>
+        <MaterialIndicator capturedPieces={game.capturedPieces} balance={material} color={orientation} ruleset={ruleset} />
         {!analysis && !online && game.drawOffer && <div className="draw-offer" role="status"><p>{game.drawOffer === "white" ? "White" : "Black"} offers a draw. {game.drawOffer === "white" ? "Black" : "White"}, accept?</p><div>
             <button className="quiet-button" onClick={() => dispatch({ type: "respond-draw", color: game.drawOffer === "white" ? "black" : "white", accept: true })}>Accept draw</button>
             <button className="quiet-button" onClick={() => dispatch({ type: "respond-draw", color: game.drawOffer === "white" ? "black" : "white", accept: false })}>Decline draw</button>
@@ -162,5 +167,5 @@ export default function Board({ testMode = false, orientation = "white", playerN
             ratingSummary={bot && "winner" in status && status.winner === orientation ? botId === "merlin" ? <MerlinBadgeResult key={gameNumber} /> : botId === "kestrel" ? <KestrelBadgeResult key={gameNumber} /> : <RookeBadgeResult key={gameNumber} /> : online?.live ? online.ratingSummary : online ? <p className="result-unrated">Preview only · Ratings are unchanged</p> : onlineGameId && !bot ? <OnlineGameFinalization key={onlineGameId} gameId={onlineGameId} /> : undefined}
         />}
         {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
-    </div>{bot && <ActiveBotPanel testMode={testMode} key={gameNumber} evaluationSeed={evaluationSeed} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
+    </div>{bot && <ActiveBotPanel testMode={testMode} key={gameNumber} evaluationSeed={evaluationSeed} board={board} halfmoveClock={game.halfmoveClock} plyCount={game.plyCount} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
 }

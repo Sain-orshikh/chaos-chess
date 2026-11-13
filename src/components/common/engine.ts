@@ -9,6 +9,7 @@ import { createPieceSquareTables, defaultPieceSquareTables } from "../utils/posi
 import { zobrist_hash } from "../utils/hash";
 import { createTranspositionTable } from "../utils/transpose_table";
 import { automaticDrawReason, nextHalfmoveClock } from "./draw_rules";
+import { chooseOpeningMove } from "./opening_variation";
 
 export type SearchStats = {
     positionsVisited: number;
@@ -49,6 +50,7 @@ export type SearchOptions = {
     checkmateEvalScale?: number;
     positionalScale?: number;
     evaluationSeed?: number;
+    openingVariation?: { cutoff: number; seed: number };
     onProgress?: (stats: SearchStats) => void;
 };
 
@@ -288,12 +290,17 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
         let alpha = -Infinity, beta = Infinity;
         let bestMove: BasicMove | null = null;
         let bestScore = turn === "white" ? -Infinity : Infinity;
+        const candidates: { move: BasicMove; score: number }[] = [];
         const rootMoves = orderMoves(board, legalMoves(board, turn, castling, stats, standard), mode, ruleset);
         if (rootMoves.length === 0) terminalScore(turn, 0);
         else if (automaticDrawReason(board, ruleset, halfmoveClock)) { drawScore(); return null; }
         for (const move of rootMoves) {
-            const score = afterMove(move, false, () => search(turn === "white" ? "black" : "white", depth - 1, alpha, beta));
+            // Independent full windows give exact candidate scores; fail-low bounds
+            // from the usual root window cannot safely be used for random selection.
+            const score = afterMove(move, false, () => search(turn === "white" ? "black" : "white", depth - 1,
+                options.openingVariation ? -Infinity : alpha, options.openingVariation ? Infinity : beta));
             checkLimits(true);
+            if (options.openingVariation) candidates.push({ move, score: turn === "white" ? score : -score });
             if (bestMove === null || (turn === "white" ? score > bestScore : score < bestScore)) {
                 bestScore = score;
                 bestMove = move;
@@ -301,7 +308,9 @@ export function Engine(board: Board, turn: Color, depth = 4, stats?: SearchStats
             if (turn === "white") alpha = Math.max(alpha, bestScore);
             else beta = Math.min(beta, bestScore);
         }
-        return bestMove;
+        return options.openingVariation
+            ? chooseOpeningMove(candidates, options.openingVariation.cutoff, options.openingVariation.seed)
+            : bestMove;
     } finally {
         if (stats) stats.elapsedMs = performance.now() - start;
     }

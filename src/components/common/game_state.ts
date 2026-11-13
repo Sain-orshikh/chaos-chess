@@ -51,9 +51,11 @@ export type GameState = {
     turn: Color;
     selectedSquare: Square | null;
     lastMove: BasicMove | null;
+    capturedPieces?: number[];
     status: GameStatus;
     drawOffer: Color | null;
     halfmoveClock: number;
+    plyCount: number;
     pendingPromotion: {
         square: Square;
         color: Color;
@@ -72,7 +74,7 @@ export type GameAction = { type: "click"; square: Square } | { type: "rotate" } 
 export function createGame(board: Board, turn: Color = "white", castling: CastlingState = createCastlingState(), ruleset: Ruleset = "chaos", standardState: StandardState = createStandardState(), halfmoveClock = 0): GameState {
     const flags = { ...castling };
     const standard = ruleset === "normal" ? cloneStandardState(standardState) : undefined;
-    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, drawOffer: null, pendingPromotion: null };
+    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, capturedPieces: [], status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, plyCount: 0, drawOffer: null, pendingPromotion: null };
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -167,6 +169,8 @@ function completeMove(state: GameState, move: BasicMove): GameState {
     const standard = state.standard ? cloneStandardState(state.standard) : undefined;
     const halfmoveClock = nextHalfmoveClock(state.board, move, state.halfmoveClock);
     const board = applyMove(state.board, move, castling, standard);
+    // Compare enemy pieces so promotions and rook rotations never count as captures.
+    const captured = state.board.filter((piece, square) => pieceColor(piece) === (state.turn === "white" ? "black" : "white") && board[square] !== piece);
     const turn = state.turn === "white" ? "black" : "white";
     return {
         board,
@@ -176,8 +180,10 @@ function completeMove(state: GameState, move: BasicMove): GameState {
         turn,
         selectedSquare: null,
         lastMove: move,
+        capturedPieces: [...(state.capturedPieces ?? []), ...captured],
         status: getGameStatus(board, turn, castling, standard, halfmoveClock),
         halfmoveClock,
+        plyCount: state.plyCount + 1,
         drawOffer: state.drawOffer === turn ? null : state.drawOffer,
         pendingPromotion: null,
     };
