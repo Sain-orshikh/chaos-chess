@@ -167,5 +167,5 @@ export default function Board({ testMode = false, orientation = "white", playerN
             ratingSummary={bot && "winner" in status && status.winner === orientation ? botId === "merlin" ? <MerlinBadgeResult key={gameNumber} /> : botId === "kestrel" ? <KestrelBadgeResult key={gameNumber} /> : <RookeBadgeResult key={gameNumber} /> : online?.live ? online.ratingSummary : online ? <p className="result-unrated">Preview only · Ratings are unchanged</p> : onlineGameId && !bot ? <OnlineGameFinalization key={onlineGameId} gameId={onlineGameId} /> : undefined}
         />}
         {!!carriedPiece && <div className="carried-piece" style={{ left: pointer.x, top: pointer.y }}>{<BoardPiece code={carriedPiece} />}</div>}
-    </div>{bot && <ActiveBotPanel testMode={testMode} key={gameNumber} evaluationSeed={evaluationSeed} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
+    </div>{bot && <ActiveBotPanel testMode={testMode} key={gameNumber} evaluationSeed={evaluationSeed} plyCount={game.plyCount} board={board} halfmoveClock={game.halfmoveClock} castling={castling} standard={standard} turn={turn} active={botTurn && !gameOver && !pendingPromotion} onMove={acceptBotMove} />}</div>;
 }

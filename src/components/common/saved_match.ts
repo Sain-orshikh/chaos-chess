@@ -14,7 +14,7 @@ export function encodeMatch(match: SavedMatch): string {
     const { game } = match;
     return JSON.stringify({ version: 1, botId: match.botId, orientation: match.orientation, evaluationSeed: match.evaluationSeed, expiresAt: match.expiresAt,
         board: game.pendingPromotion?.boardBefore ?? game.board, ruleset: game.ruleset, turn: game.turn,
-        castling: game.castling, standard: game.standard, halfmoveClock: game.halfmoveClock,
+        castling: game.castling, standard: game.standard, halfmoveClock: game.halfmoveClock, plyCount: game.plyCount,
         drawOffer: game.drawOffer, lastMove: game.lastMove, capturedPieces: game.capturedPieces ?? [],
         promotion: game.pendingPromotion ? { from: game.pendingPromotion.moves[0].from, to: game.pendingPromotion.moves[0].to } : null });
 }
@@ -46,6 +46,9 @@ export function decodeMatch(raw: string | null, now = Date.now()): SavedMatch | 
         }
         let game = createGame(value.board, value.turn, { white: value.castling.white, black: value.castling.black }, value.ruleset as Ruleset, standard, Number(value.halfmoveClock));
         if (isGameOver(game.status)) return null;
+        if (value.plyCount !== undefined && (!Number.isSafeInteger(value.plyCount) || Number(value.plyCount) < 0)) return null;
+        // Unknown age in older saves must not restart the opening allowance.
+        game.plyCount = value.plyCount === undefined ? undefined : Number(value.plyCount);
         if (value.capturedPieces !== undefined) {
             if (!Array.isArray(value.capturedPieces) || value.capturedPieces.length > 64 || !value.capturedPieces.every(piece => Number.isInteger(piece) && Math.abs(piece) >= 1 && Math.abs(piece) <= 6)) return null;
             game.capturedPieces = value.capturedPieces;
