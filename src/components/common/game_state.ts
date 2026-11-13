@@ -55,7 +55,6 @@ export type GameState = {
     status: GameStatus;
     drawOffer: Color | null;
     halfmoveClock: number;
-    plyCount: number;
     pendingPromotion: {
         square: Square;
         color: Color;
@@ -74,7 +73,7 @@ export type GameAction = { type: "click"; square: Square } | { type: "rotate" } 
 export function createGame(board: Board, turn: Color = "white", castling: CastlingState = createCastlingState(), ruleset: Ruleset = "chaos", standardState: StandardState = createStandardState(), halfmoveClock = 0): GameState {
     const flags = { ...castling };
     const standard = ruleset === "normal" ? cloneStandardState(standardState) : undefined;
-    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, capturedPieces: [], status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, plyCount: 0, drawOffer: null, pendingPromotion: null };
+    return { board, ruleset, standard, castling: flags, turn, selectedSquare: null, lastMove: null, capturedPieces: [], status: getGameStatus(board, turn, flags, standard, halfmoveClock), halfmoveClock, drawOffer: null, pendingPromotion: null };
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -183,7 +182,6 @@ function completeMove(state: GameState, move: BasicMove): GameState {
         capturedPieces: [...(state.capturedPieces ?? []), ...captured],
         status: getGameStatus(board, turn, castling, standard, halfmoveClock),
         halfmoveClock,
-        plyCount: state.plyCount + 1,
         drawOffer: state.drawOffer === turn ? null : state.drawOffer,
         pendingPromotion: null,
     };

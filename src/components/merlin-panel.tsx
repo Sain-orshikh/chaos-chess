@@ -7,11 +7,11 @@ import type { BasicMove, Board, Color, CastlingState, StandardState } from "./ut
 type MerlinMessage = { type: "result"; result: NativeBotResult } | { type: "error"; message: string };
 
 type Props = {
-    testMode?: boolean; evaluationSeed?: number; board: Board; halfmoveClock: number; plyCount: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
+    testMode?: boolean; evaluationSeed?: number; board: Board; halfmoveClock: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
     onMove: (move: BasicMove, board: Board, turn: Color) => void;
 };
 
-export default function MerlinPanel({ testMode = false, board, halfmoveClock, plyCount, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
+export default function MerlinPanel({ testMode = false, board, halfmoveClock, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
     // Stable for every turn/depth in this game; a restart remounts this panel with a new seed.
     const [randomSeed] = useState(() => 1 + Math.floor(Math.random() * 0xffffffff));
     const evaluationSeed = savedSeed ?? randomSeed;
@@ -39,11 +39,11 @@ export default function MerlinPanel({ testMode = false, board, halfmoveClock, pl
                 }
             };
             current.onerror = () => { fail("The bot could not finish its search. Try again."); current.terminate(); };
-            current.postMessage({ board, halfmoveClock, plyCount, castling, standard, turn, timeMs: 3000, evaluationSeed });
+            current.postMessage({ board, halfmoveClock, castling, standard, turn, timeMs: 3000, evaluationSeed });
         } catch {
             queueMicrotask(() => fail("The background search could not start. Try again."));
         }
         return () => { cancelled = true; worker?.terminate(); };
-    }, [active, board, halfmoveClock, plyCount, castling, standard, turn, retry, onMove, evaluationSeed, testMode]);
+    }, [active, board, halfmoveClock, castling, standard, turn, retry, onMove, evaluationSeed, testMode]);
     return <>{testMode && <BotStats data={active && measurement?.board !== board ? null : measurement?.data ?? null} active={active} live={false} />}{error && <div className="bot-error" role="alert"><p>{error}</p><button type="button" className="quiet-button" onClick={() => { setFailure(null); setRetry(value => value + 1); }}>Retry bot move</button></div>}</>;
 }

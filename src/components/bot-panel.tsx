@@ -7,11 +7,11 @@ import type { BasicMove, Board, Color, CastlingState, StandardState } from "./ut
 import { defaultBotSettings } from "./common/bot_search";
 
 type Props = {
-    testMode?: boolean; evaluationSeed?: number; board: Board; halfmoveClock: number; plyCount: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
+    testMode?: boolean; evaluationSeed?: number; board: Board; halfmoveClock: number; castling: CastlingState; standard?: StandardState; turn: Color; active: boolean;
     onMove: (move: BasicMove, board: Board, turn: Color) => void;
 };
 
-export default function BotPanel({ testMode = false, board, halfmoveClock, plyCount, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
+export default function BotPanel({ testMode = false, board, halfmoveClock, castling, standard, turn, active, onMove, evaluationSeed: savedSeed }: Props) {
     // Stable for every turn/depth in this game; a restart remounts this panel with a new seed.
     const [randomSeed] = useState(() => 1 + Math.floor(Math.random() * 0xffffffff));
     const evaluationSeed = savedSeed ?? randomSeed;
@@ -40,11 +40,11 @@ export default function BotPanel({ testMode = false, board, halfmoveClock, plyCo
                 }
             };
             current.onerror = () => { fail("The bot could not finish its search. Try again."); current.terminate(); };
-            current.postMessage({ board, halfmoveClock, plyCount, castling, standard, turn, settings: defaultBotSettings, evaluationSeed });
+            current.postMessage({ board, halfmoveClock, castling, standard, turn, settings: defaultBotSettings, evaluationSeed });
         } catch {
             queueMicrotask(() => fail("The background search could not start. Try again."));
         }
         return () => { cancelled = true; worker?.terminate(); };
-    }, [active, board, halfmoveClock, plyCount, castling, standard, turn, retry, onMove, evaluationSeed, testMode]);
+    }, [active, board, halfmoveClock, castling, standard, turn, retry, onMove, evaluationSeed, testMode]);
     return <>{testMode && <BotStats data={active && measurement?.board !== board ? null : measurement?.data ?? null} active={active} live={true} />}{error && <div className="bot-error" role="alert"><p>{error}</p><button type="button" className="quiet-button" onClick={() => { setFailure(null); setRetry(value => value + 1); }}>Retry bot move</button></div>}</>;
 }

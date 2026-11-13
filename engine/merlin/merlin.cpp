@@ -1,6 +1,5 @@
 // Merlin: independent Classic-only bitboard engine. a8=0; app piece IDs.
 #include "bitboards.h"
-#include "../opening_variation.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -515,10 +514,6 @@ void order(List &l, Move preferred, int ply) {
     scores[j] = s;
   }
 }
-int openingCutoff = 0, openingSelectedScore = 0;
-uint32_t openingGameSeed = 0;
-std::array<int, MAXMOVES> openingScores;
-
 int search(int depth, int alpha, int beta, int ply, int extensions,
            int qp = 0) {
   nodes++;
@@ -588,15 +583,11 @@ int search(int depth, int alpha, int beta, int ply, int extensions,
   }
   order(moves, preferred, ply);
   int bestScore = quiet && !check ? alpha : -INF;
-  const bool variedRoot = ply == 0 && openingCutoff > 0;
   for (int i = 0; i < moves.n; i++) {
     Move m = moves.m[i];
     auto u = make(m);
     int score;
-    if (variedRoot) {
-      // Full windows are required: PVS fail-low results are bounds, not scores.
-      score = -search(depth - 1, -INF, INF, ply + 1, extensions, 0);
-    } else if (!quiet && i > 0) {
+    if (!quiet && i > 0) {
       score = -search(depth - 1, -alpha - 1, -alpha, ply + 1, extensions, qp);
       if (score > alpha && score < beta)
         score = -search(depth - 1, -beta, -alpha, ply + 1, extensions, qp);
@@ -606,7 +597,6 @@ int search(int depth, int alpha, int beta, int ply, int extensions,
     unmake(u);
     if (stopped)
       return 0;
-    if (variedRoot) openingScores[i] = score;
     if (score > bestScore) {
       bestScore = score;
       best = m;
@@ -635,12 +625,6 @@ int search(int depth, int alpha, int beta, int ply, int extensions,
              uint8_t(bestScore <= original ? 2
                      : bestScore >= beta   ? 1
                                            : 0)};
-  }
-  if (variedRoot && moves.n) {
-    int selected = openingIndex(openingScores.data(), moves.n, openingCutoff,
-        openingGameSeed ^ uint32_t(pos.hash) ^ uint32_t(pos.hash >> 32), MATE - MAXPLY);
-    bestOut = moves.m[selected];
-    openingSelectedScore = openingScores[selected];
   }
   return bestScore;
 }
@@ -707,17 +691,12 @@ void merlin_init() {
       pst[1][id][sq] = eg;
     }
 }
-void merlin_opening(int cutoff, uint32_t seed) {
-  openingCutoff = std::clamp(cutoff, 0, 100);
-  openingGameSeed = seed;
-}
 int merlin_search(int milliseconds, int maxDepth) {
   tt.fill(Entry{});
   std::memset(killers, 0, sizeof(killers));
   std::memset(history, 0, sizeof(history));
   nodes = qnodes = 0;
   completed = 0;
-  scoreOut = 0;
   stopped = false;
   start = std::chrono::steady_clock::now();
   deadline = start + std::chrono::milliseconds(milliseconds);
@@ -733,7 +712,7 @@ int merlin_search(int milliseconds, int maxDepth) {
         break;
       }
       last = bestOut;
-      scoreOut = openingCutoff > 0 && root.n ? openingSelectedScore : score;
+      scoreOut = score;
       completed = d;
       if (std::abs(score) > MATE - MAXPLY)
         break;

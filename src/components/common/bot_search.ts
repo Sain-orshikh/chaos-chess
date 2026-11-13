@@ -5,7 +5,6 @@ import { pieceColor } from "../utils/pieces";
 import { createCastlingState, cloneStandardState } from "../utils/types";
 import type { BasicMove, Board, Color, CastlingState, StandardState } from "../utils/types";
 import { automaticDrawReason } from "./draw_rules";
-import { openingSeed, ROOKE_OPENING_CUTOFF } from "./opening_variation";
 
 export type BotSettings = {
     mode: SearchMode; maxDepth: number; maxTimeMs: number;
@@ -15,7 +14,7 @@ export const defaultBotSettings: BotSettings = {
     mode: "alpha-beta-ordered", maxDepth: 16, maxTimeMs: 3000,
     quiescence: true, maxQuiescencePly: 8, maxCheckEvasionPly: 8,
 };
-export type BotRequest = { board: Board; turn: Color; settings: BotSettings; castling?: CastlingState; standard?: StandardState; halfmoveClock?: number; evaluationSeed?: number; plyCount?: number };
+export type BotRequest = { board: Board; turn: Color; settings: BotSettings; castling?: CastlingState; standard?: StandardState; halfmoveClock?: number; evaluationSeed?: number };
 export type BotReport = {
     stats: SearchStats; completedDepth: number; searchingDepth: number; requestedDepth: number;
     generationMs: number; legalMoves: number;
@@ -31,7 +30,6 @@ export type BotMessage =
 /** One total deadline across iterative depths. Never replace a completed result with a partial one. */
 export function searchBot(request: BotRequest, progress: (report: BotReport) => void = () => {}): BotResult {
     const { board, turn, settings } = request;
-    const seed = openingSeed(request.plyCount, request.evaluationSeed);
     const castling = { ...(request.castling ?? createCastlingState()) };
     const standard = request.standard ? cloneStandardState(request.standard) : undefined;
     if (!Number.isInteger(settings.maxDepth) || settings.maxDepth < 1 || settings.maxDepth > 16) throw new RangeError("Choose a depth from 1 to 16.");
@@ -64,7 +62,6 @@ export function searchBot(request: BotRequest, progress: (report: BotReport) => 
         try {
             const next = Engine(board, turn, depth, current, {
                 ...settings, castling, standard, halfmoveClock: request.halfmoveClock, evaluationSeed: request.evaluationSeed, maxTimeMs: remaining, onProgress: snapshot => progress(report(snapshot)),
-                openingVariation: seed === undefined ? undefined : { cutoff: ROOKE_OPENING_CUTOFF, seed },
             });
             move = next;
             completedDepth = depth;
